@@ -1,0 +1,22 @@
+-- ============================================================================
+-- Bootstrap the first admin user
+--
+-- Steps:
+--   1. Supabase dashboard → Authentication → Users → Add user
+--      Email: admin@chengfeng.com
+--      Password: <set a strong one>
+--      Auto Confirm User: ON
+--   2. Copy the new user's UUID from the dashboard.
+--   3. Run this SQL, replacing the UUID below with the one you copied.
+--      (Or leave as-is if you've already added a user with that id.)
+-- ============================================================================
+
+-- After creating the user via dashboard Auth, link the profile:
+-- insert into public.admin_profiles (id, email, name, role)
+-- values (
+--   'PASTE-AUTH-USER-UUID-HERE',
+--   'admin@chengfeng.com',
+--   'Admin',
+--   'superadmin'
+-- )
+-- on conflict (id) do update set role = excluded.role, name = excluded.name;

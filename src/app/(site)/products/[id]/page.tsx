@@ -1,0 +1,313 @@
+import Image from 'next/image';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { getProductById, getProductsByCategory } from '@/lib/db-queries';
+import { getCategoryLabel } from '@/lib/products';
+import SizeSelector from '@/components/SizeSelector';
+
+interface ProductDetailPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+  const { id } = await params;
+  const product = await getProductById(id);
+
+  if (!product) {
+    notFound();
+  }
+
+  const relatedProducts = (await getProductsByCategory(product.category))
+    .filter((p) => p.id !== product.id)
+    .slice(0, 3);
+
+  // Use only the main product images
+  const allImages = [...product.images];
+
+  return (
+    <main className="min-h-screen bg-[#F5F0EB]">
+      {/* Breadcrumb */}
+      <div className="bg-white border-b border-[#D9D4CE]">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 py-3">
+          <nav className="flex items-center gap-2 text-xs text-[#2C2C2C]/40">
+            <Link href="/" className="hover:text-[#B8956A] transition-colors">Home</Link>
+            <span>/</span>
+            <Link href="/products" className="hover:text-[#B8956A] transition-colors">Products</Link>
+            <span>/</span>
+            <Link href={`/products?category=${product.category}`} className="hover:text-[#B8956A] transition-colors">
+              {getCategoryLabel(product.category)}
+            </Link>
+            <span>/</span>
+            <span className="text-[#2C2C2C]/60">{product.name}</span>
+          </nav>
+        </div>
+      </div>
+
+      {/* Product Section */}
+      <section className="py-10 lg:py-16">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+            {/* Left: Images */}
+            <div>
+              {/* Main Image */}
+              <div className="relative h-[500px] lg:h-[640px] bg-[#EDEBE8] overflow-hidden mb-4">
+                <Image
+                  src={allImages[0]}
+                  alt={product.name}
+                  fill
+                  className="object-cover object-top"
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                />
+                {product.isNew && (
+                  <span className="absolute top-4 left-4 bg-[#B8956A] text-white text-[10px] tracking-[0.1em] uppercase px-3 py-1.5">
+                    New Arrival
+                  </span>
+                )}
+              </div>
+              {/* Thumbnail Row */}
+              {allImages.length > 1 && (
+                <div className="grid grid-cols-4 gap-3">
+                  {allImages.slice(0, 4).map((img, index) => (
+                    <div key={index} className="relative h-24 bg-[#EDEBE8] overflow-hidden cursor-pointer border border-[#D9D4CE] hover:border-[#B8956A] transition-colors">
+                      <Image
+                        src={img}
+                        alt={`${product.name} view ${index + 1}`}
+                        fill
+                        className="object-cover object-top"
+                        sizes="120px"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Right: Product Info */}
+            <div className="lg:py-4">
+              <p className="text-[#B8956A] text-xs tracking-[0.15em] uppercase mb-2">
+                {getCategoryLabel(product.category)} · {product.series}
+              </p>
+              <h1 className="font-serif text-3xl lg:text-4xl text-[#2C2C2C] mb-3" style={{ letterSpacing: '0.02em' }}>
+                {product.name}
+              </h1>
+              <p className="text-[#2C2C2C]/50 text-sm mb-6">{product.description}</p>
+
+              {/* Wholesale Price & MOQ */}
+              <div className="bg-white border border-[#D9D4CE] p-6 mb-6">
+                <div className="flex items-baseline justify-between mb-4">
+                  <div>
+                    <p className="text-[10px] tracking-[0.1em] uppercase text-[#2C2C2C]/40 mb-1">Wholesale Price</p>
+                    <span className="text-2xl text-[#2C2C2C] font-medium">From ${product.wholesalePrice.toFixed(2)}</span>
+                    <span className="text-[#2C2C2C]/40 text-sm ml-1">/unit</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] tracking-[0.1em] uppercase text-[#2C2C2C]/40 mb-1">Minimum Order</p>
+                    <span className="text-lg text-[#B8956A] font-medium">{product.moq} units</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-[#2C2C2C]/50">
+                  <span>Lead time: {product.leadTime}</span>
+                  <span className="text-[#D9D4CE]">|</span>
+                  <span>SKU: {product.sku}</span>
+                </div>
+              </div>
+
+              {/* Bulk Pricing Tiers */}
+              <div className="bg-white border border-[#D9D4CE] p-6 mb-6">
+                <h3 className="font-serif text-base text-[#2C2C2C] mb-4" style={{ letterSpacing: '0.04em' }}>
+                  Volume Pricing
+                </h3>
+                <div className="space-y-0">
+                  {product.bulkPricing.map((tier, index) => (
+                    <div
+                      key={index}
+                      className={`flex items-center justify-between py-3 ${
+                        index !== product.bulkPricing.length - 1 ? 'border-b border-[#D9D4CE]' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-[#2C2C2C]">
+                          {tier.minQty}{tier.maxQty ? `–${tier.maxQty}` : '+'} units
+                        </span>
+                        {index === product.bulkPricing.length - 1 && (
+                          <span className="text-[10px] tracking-[0.08em] uppercase bg-[#B8956A]/10 text-[#B8956A] px-2 py-0.5">
+                            Best Value
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-[#2C2C2C]">
+                        ${tier.unitPrice.toFixed(2)}/unit
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Available Colors */}
+              {product.availableColors.length > 0 && (
+                <div className="bg-white border border-[#D9D4CE] p-6 mb-6">
+                  <h3 className="font-serif text-base text-[#2C2C2C] mb-4" style={{ letterSpacing: '0.04em' }}>
+                    Available Colors
+                  </h3>
+                  <div className="flex flex-wrap gap-3">
+                    {product.availableColors.map((color) => (
+                      <div key={color.name} className="flex items-center gap-2">
+                        <span
+                          className="w-6 h-6 rounded-full border border-[#D9D4CE]"
+                          style={{ backgroundColor: color.hex }}
+                        />
+                        <span className="text-xs text-[#2C2C2C]/60">{color.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Available Sizes */}
+              <SizeSelector sizes={product.sizes} sizeChart={product.sizeChart} />
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 mb-8">
+                <Link
+                  href="/inquiry"
+                  className="flex-1 inline-flex items-center justify-center px-6 py-3.5 bg-[#2C2C2C] text-white text-sm tracking-[0.08em] uppercase hover:bg-[#2C2C2C]/90 transition-colors"
+                >
+                  Request Quote
+                </Link>
+                <Link
+                  href="/inquiry"
+                  className="flex-1 inline-flex items-center justify-center px-6 py-3.5 border border-[#B8956A] text-[#B8956A] text-sm tracking-[0.08em] uppercase hover:bg-[#B8956A] hover:text-white transition-colors"
+                >
+                  Request Sample
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Specifications & Details */}
+      <section className="py-12 lg:py-16 bg-white">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            {/* Material & Craft */}
+            <div>
+              <h2 className="font-serif text-lg text-[#2C2C2C] mb-4" style={{ letterSpacing: '0.04em' }}>
+                Material & Craft
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] tracking-[0.1em] uppercase text-[#2C2C2C]/40 mb-1">Fabric</p>
+                  <p className="text-sm text-[#2C2C2C]">{product.material.fabric}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] tracking-[0.1em] uppercase text-[#2C2C2C]/40 mb-1">Lining</p>
+                  <p className="text-sm text-[#2C2C2C]">{product.material.lining}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] tracking-[0.1em] uppercase text-[#2C2C2C]/40 mb-1">Craft</p>
+                  <p className="text-sm text-[#2C2C2C]">{product.material.craft}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Design Details */}
+            <div>
+              <h2 className="font-serif text-lg text-[#2C2C2C] mb-4" style={{ letterSpacing: '0.04em' }}>
+                Design Details
+              </h2>
+              <ul className="space-y-2">
+                {product.designDetails.map((detail, index) => (
+                  <li key={index} className="flex items-start gap-2 text-sm text-[#2C2C2C]">
+                    <span className="text-[#B8956A] mt-1.5 text-[6px]">●</span>
+                    {detail}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Production & Logistics */}
+            <div>
+              <h2 className="font-serif text-lg text-[#2C2C2C] mb-4" style={{ letterSpacing: '0.04em' }}>
+                Production Info
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] tracking-[0.1em] uppercase text-[#2C2C2C]/40 mb-1">Minimum Order</p>
+                  <p className="text-sm text-[#2C2C2C]">{product.moq} units per color/style</p>
+                </div>
+                <div>
+                  <p className="text-[10px] tracking-[0.1em] uppercase text-[#2C2C2C]/40 mb-1">Lead Time</p>
+                  <p className="text-sm text-[#2C2C2C]">{product.leadTime}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] tracking-[0.1em] uppercase text-[#2C2C2C]/40 mb-1">Packaging</p>
+                  <p className="text-sm text-[#2C2C2C]">{product.packaging}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] tracking-[0.1em] uppercase text-[#2C2C2C]/40 mb-1">Certifications</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {product.certifications.map((cert) => (
+                      <span key={cert} className="text-[10px] tracking-[0.08em] uppercase bg-[#F5F0EB] text-[#2C2C2C]/60 px-2.5 py-1">
+                        {cert}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Care Instructions */}
+      <section className="py-10 bg-white">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <h2 className="font-serif text-lg text-[#2C2C2C] mb-3" style={{ letterSpacing: '0.04em' }}>
+            Care Instructions
+          </h2>
+          <p className="text-sm text-[#2C2C2C]/60 max-w-xl">{product.careInstructions}</p>
+        </div>
+      </section>
+
+      {/* Related Products */}
+      {relatedProducts.length > 0 && (
+        <section className="py-12 lg:py-16 bg-[#F5F0EB] border-t border-[#D9D4CE]">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <h2 className="font-serif text-xl text-[#2C2C2C] mb-8" style={{ letterSpacing: '0.04em' }}>
+              Similar Products
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {relatedProducts.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/products/${p.id}`}
+                  className="group block bg-white border border-[#D9D4CE] hover:border-[#B8956A] transition-colors overflow-hidden"
+                >
+                  <div className="relative h-64 bg-[#EDEBE8] overflow-hidden">
+                    <Image
+                      src={p.images[0]}
+                      alt={p.name}
+                      fill
+                      className="object-cover object-top group-hover:scale-[1.02] transition-transform duration-500"
+                      sizes="(max-width: 640px) 100vw, 33vw"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <p className="text-[#B8956A] text-[10px] tracking-[0.1em] uppercase mb-1">{getCategoryLabel(p.category)}</p>
+                    <h3 className="font-serif text-sm text-[#2C2C2C] mb-2">{p.name}</h3>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-sm text-[#2C2C2C]">From ${p.wholesalePrice.toFixed(2)}/unit</span>
+                      <span className="text-[10px] text-[#2C2C2C]/40">MOQ: {p.moq}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+    </main>
+  );
+}

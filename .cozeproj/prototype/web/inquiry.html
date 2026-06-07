@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Fonts: Playfair Display (serif headings) + Noto Serif SC (CN headings) + Inter (body) -->
+  <link href="https://fonts.googleapis.cn/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/jquery/jquery-3.7.1.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/lucide/lucide-1.11.0.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/tailwindcss/tailwindcss-browser-4.2.4.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      /* === 品牌色 === */
+      --color-primary:              #2C2C2C;
+      --color-primary-container:    #3D3D3D;
+      --color-on-primary:           #F5F0EB;
+      /* === 背景 / 表面 === */
+      --color-background:                 #F5F0EB;
+      --color-surface-container-lowest:   #FFFFFF;
+      --color-surface:                    #FFFFFF;
+      --color-surface-container:          #EDEBE8;
+      --color-surface-container-high:     #E5E2DD;
+      --color-surface-container-highest:  #DDD9D4;
+      /* === 文字 === */
+      --color-on-surface:           #2C2C2C;
+      --color-on-surface-variant:   #7A756E;
+      /* === 功能色 === */
+      --color-success:  #22c55e;
+      --color-error:    #ef4444;
+      --color-warning:  #f59e0b;
+      /* === 品牌点缀色 === */
+      --color-ochre:       #B8956A;
+      --color-ochre-light: #D4B896;
+      --color-ochre-dark:  #96754E;
+      /* === 边框 === */
+      --color-outline:          #D9D4CE;
+      --color-outline-variant:  #E5E2DD;
+      /* === 圆角 (max 6px per DESIGN.md) === */
+      --radius-sm:   0.125rem;
+      --radius-md:   0.25rem;
+      --radius-lg:   0.375rem;
+      --radius-xl:   0.5rem;
+      --radius-2xl:  0.75rem;
+      --radius-full: 9999px;
+      /* === 阴影 (max 2px blur per DESIGN.md) === */
+      --shadow-card:   0 1px 2px rgba(0,0,0,0.08);
+      --shadow-float:  0 2px 2px rgba(0,0,0,0.1);
+      --shadow-dialog: 0 2px 2px rgba(0,0,0,0.12);
+      /* === 字体 === */
+      --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --font-serif: "Playfair Display", "Noto Serif SC", ui-serif, Georgia, serif;
+    }
+  </style>
+
+  <!-- 图片兜底 -->
+  <script>
+    document.addEventListener('error', function (e) {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || img.dataset.fallback) return;
+      img.dataset.fallback = '1';
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cat = img.getAttribute('data-category') || '其他';
+      const alt = img.getAttribute('alt') || '';
+      const label = esc(alt.length > 8 ? alt.slice(0, 8) + '…' : alt);
+      const icons = { '人物': '👤', '自然风景': '🏞', '动物': '🐾', '建筑城市': '🏙', '运动体育': '⚽', '交通工具': '🚗', '食物': '🍽', '服饰时尚': '👗', '商业科技': '💼', '游戏娱乐': '🎮', '艺术': '🎨', '其他': '🖼' };
+      const icon = icons[cat] || '🖼';
+      const w = img.width || 400, h = img.height || 300;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="45%" text-anchor="middle" font-size="${Math.min(w, h) * 0.18}" dominant-baseline="central">${icon}</text><text x="50%" y="68%" text-anchor="middle" font-size="${Math.min(w, h) * 0.07}" fill="%239ca3af" font-family="system-ui,sans-serif" dominant-baseline="central">${label}</text></svg>`;
+      img.src = 'data:image/svg+xml,' + svg;
+    }, true);
+  </script>
+
+  <style>
+    .step-circle {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    .step-circle.active {
+      background-color: var(--color-ochre);
+      color: #fff;
+    }
+    .step-circle.completed {
+      background-color: var(--color-success);
+      color: #fff;
+    }
+    .step-circle.future {
+      background-color: var(--color-surface-container-high);
+      color: var(--color-on-surface-variant);
+    }
+    .step-connector {
+      height: 2px;
+      flex: 1;
+      background-color: var(--color-surface-container-high);
+      transition: background-color 0.3s ease;
+    }
+    .step-connector.completed {
+      background-color: var(--color-success);
+    }
+    .wizard-step {
+      display: none;
+    }
+    .wizard-step.active {
+      display: block;
+    }
+    .product-card {
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .product-card.selected {
+      border: 2px solid var(--color-ochre);
+    }
+    .product-card .check-overlay {
+      display: none;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      background-color: var(--color-ochre);
+      border-radius: 9999px;
+      align-items: center;
+      justify-content: center;
+    }
+    .product-card.selected .check-overlay {
+      display: flex;
+    }
+    select.has-chevron {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237A756E' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+    }
+  </style>
+</head>
+
+<body class="bg-background text-on-surface font-sans">
+
+  <!-- @nav:start 导航组件，不需要的页面则不要复制此段 -->
+  <header class="bg-surface/95 backdrop-blur-sm sticky top-0 z-40 border-b border-outline-variant/30">
+    <div class="max-w-7xl mx-auto h-16 flex items-center justify-between px-6">
+      <!-- Logo -->
+      <a href="home.html" class="flex items-center gap-3">
+        <span class="font-serif text-xl font-semibold tracking-wide text-on-surface">CHENGFENG</span>
+        <span class="text-xs text-on-surface-variant tracking-widest uppercase">International</span>
+      </a>
+      <!-- Desktop Nav -->
+      <nav class="hidden md:flex items-center gap-8">
+        <a href="home.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">Home</a>
+        <a href="products.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">Collections</a>
+        <a href="about.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">About</a>
+        <a href="inquiry.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide" aria-current="page" style="border-bottom: 2px solid var(--color-ochre); padding-bottom: 2px;">Inquiry</a>
+      </nav>
+      <!-- CTA + Mobile -->
+      <div class="flex items-center gap-4">
+        <a href="inquiry.html" class="hidden md:inline-flex bg-ochre text-white px-5 py-2 text-sm font-medium tracking-wide hover:bg-ochre-dark transition-colors" style="border-radius: var(--radius-lg);">Get Quote</a>
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-btn" class="md:hidden text-on-surface" aria-label="Menu">
+          <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+      </div>
+    </div>
+    <!-- Mobile Nav -->
+    <div id="mobile-menu" class="md:hidden hidden border-t border-outline-variant/30 bg-surface">
+      <nav class="flex flex-col px-6 py-4 gap-4">
+        <a href="home.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Home</a>
+        <a href="products.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Collections</a>
+        <a href="about.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">About</a>
+        <a href="inquiry.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Inquiry</a>
+        <a href="inquiry.html" class="bg-ochre text-white px-5 py-2 text-sm font-medium tracking-wide text-center hover:bg-ochre-dark transition-colors" style="border-radius: var(--radius-lg);">Get Quote</a>
+      </nav>
+    </div>
+  </header>
+  <!-- @nav:end 导航组件，不需要的页面则不要复制此段 -->
+
+  <main class="max-w-7xl mx-auto">
+    <!-- @main-content:start -->
+
+    <!-- Breadcrumb -->
+    <div class="px-6 pt-6">
+      <nav class="flex items-center gap-2 text-sm text-on-surface-variant">
+        <a href="home.html" class="hover:text-on-surface transition-colors">Home</a>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        <span class="text-on-surface">Inquiry</span>
+      </nav>
+    </div>
+
+    <!-- Page Header -->
+    <div class="px-6 pt-8 pb-10 text-center">
+      <h1 class="font-serif text-4xl md:text-5xl font-bold tracking-wide text-on-surface">Get a Quote</h1>
+      <p class="mt-3 text-base text-on-surface-variant max-w-xl mx-auto">Tell us about your requirements and we'll respond within 24 hours</p>
+    </div>
+
+    <!-- Step Indicator -->
+    <div class="px-6 pb-10">
+      <div id="step-indicator" class="max-w-2xl mx-auto flex items-center">
+        <!-- Step 1 -->
+        <div class="flex flex-col items-center" style="min-width: 80px;">
+          <div class="step-circle active" id="step-circle-1">
+            <i data-lucide="building-2" class="w-5 h-5"></i>
+          </div>
+          <span class="mt-2 text-xs font-medium text-on-surface text-center" id="step-label-1">Your Company</span>
+        </div>
+        <!-- Connector 1-2 -->
+        <div class="step-connector" id="step-connector-1"></div>
+        <!-- Step 2 -->
+        <div class="flex flex-col items-center" style="min-width: 80px;">
+          <div class="step-circle future" id="step-circle-2">
+            <i data-lucide="shirt" class="w-5 h-5"></i>
+          </div>
+          <span class="mt-2 text-xs font-medium text-on-surface-variant text-center" id="step-label-2">Products</span>
+        </div>
+        <!-- Connector 2-3 -->
+        <div class="step-connector" id="step-connector-2"></div>
+        <!-- Step 3 -->
+        <div class="flex flex-col items-center" style="min-width: 80px;">
+          <div class="step-circle future" id="step-circle-3">
+            <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+          </div>
+          <span class="mt-2 text-xs font-medium text-on-surface-variant text-center" id="step-label-3">Requirements</span>
+        </div>
+        <!-- Connector 3-4 -->
+        <div class="step-connector" id="step-connector-3"></div>
+        <!-- Step 4 -->
+        <div class="flex flex-col items-center" style="min-width: 80px;">
+          <div class="step-circle future" id="step-circle-4">
+            <i data-lucide="message-square" class="w-5 h-5"></i>
+          </div>
+          <span class="mt-2 text-xs font-medium text-on-surface-variant text-center" id="step-label-4">Message</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Wizard Container -->
+    <div class="px-6 pb-20">
+      <div class="max-w-3xl mx-auto bg-surface rounded-lg shadow-card p-6 md:p-10">
+
+        <!-- Step 1: Your Company -->
+        <div class="wizard-step active" id="step-1">
+          <h2 class="font-serif text-2xl font-semibold text-on-surface mb-1">Your Company</h2>
+          <p class="text-sm text-on-surface-variant mb-8">Tell us about yourself and your business</p>
+
+          <div class="space-y-5">
+            <!-- Full Name -->
+            <div>
+              <label for="input-fullname" class="block text-sm font-medium text-on-surface mb-1.5">Full Name <span class="text-error">*</span></label>
+              <input type="text" id="input-fullname" class="w-full bg-surface-container border-none rounded-md px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors" placeholder="e.g. John Smith" />
+            </div>
+            <!-- Email Address -->
+            <div>
+              <label for="input-email" class="block text-sm font-medium text-on-surface mb-1.5">Email Address <span class="text-error">*</span></label>
+              <input type="email" id="input-email" class="w-full bg-surface-container border-none rounded-md px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors" placeholder="e.g. john@company.com" />
+            </div>
+            <!-- Company Name -->
+            <div>
+              <label for="input-company" class="block text-sm font-medium text-on-surface mb-1.5">Company Name <span class="text-error">*</span></label>
+              <input type="text" id="input-company" class="w-full bg-surface-container border-none rounded-md px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors" placeholder="e.g. Smith Apparel Co." />
+            </div>
+            <!-- Country/Region -->
+            <div>
+              <label for="input-country" class="block text-sm font-medium text-on-surface mb-1.5">Country / Region <span class="text-error">*</span></label>
+              <select id="input-country" class="has-chevron w-full bg-surface-container border-none rounded-md px-4 py-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors">
+                <option value="" disabled selected>Select your country</option>
+                <!-- 列表-国家选项1 -->
+                <option value="US">United States</option>
+                <!-- 列表-国家选项2 -->
+                <option value="UK">United Kingdom</option>
+                <!-- 列表-国家选项3 -->
+                <option value="DE">Germany</option>
+                <!-- 列表-国家选项4 -->
+                <option value="FR">France</option>
+                <!-- 列表-国家选项5 -->
+                <option value="AU">Australia</option>
+                <!-- 列表-国家选项6 -->
+                <option value="JP">Japan</option>
+                <!-- 列表-国家选项7 -->
+                <option value="CA">Canada</option>
+                <!-- 列表-国家选项8 -->
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <!-- Phone Number -->
+            <div>
+              <label for="input-phone" class="block text-sm font-medium text-on-surface mb-1.5">Phone Number <span class="text-on-surface-variant text-xs">(optional)</span></label>
+              <input type="tel" id="input-phone" class="w-full bg-surface-container border-none rounded-md px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors" placeholder="e.g. +1 555 123 4567" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Products -->
+        <div class="wizard-step" id="step-2">
+          <h2 class="font-serif text-2xl font-semibold text-on-surface mb-1">Products</h2>
+          <p class="text-sm text-on-surface-variant mb-8">Select the products you're interested in</p>
+
+          <p class="text-sm font-medium text-on-surface mb-4">Select products you're interested in</p>
+
+          <!-- Product Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6" id="product-grid">
+
+            <!-- 列表-产品卡片1 -->
+            <div class="product-card bg-surface-container rounded-md p-4 border-2 border-transparent" id="product-1" data-product="Classic Navy Polo" data-price="$4.20">
+              <div class="check-overlay">
+                <i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>
+              </div>
+              <img src="https://images.unsplash.com/photo-1625910513413-5fc6e5e20bd5?w=200&h=150&fit=crop" alt="Classic Navy Polo" data-category="服饰时尚" class="w-full h-28 object-cover rounded-md mb-3" />
+              <h3 class="text-sm font-semibold text-on-surface">Classic Navy Polo</h3>
+              <p class="text-sm text-ochre font-medium mt-0.5">$4.20 / unit</p>
+            </div>
+
+            <!-- 列表-产品卡片2 -->
+            <div class="product-card bg-surface-container rounded-md p-4 border-2 border-transparent" id="product-2" data-product="Essential White Tee" data-price="$3.00">
+              <div class="check-overlay">
+                <i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>
+              </div>
+              <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&h=150&fit=crop" alt="Essential White Tee" data-category="服饰时尚" class="w-full h-28 object-cover rounded-md mb-3" />
+              <h3 class="text-sm font-semibold text-on-surface">Essential White Tee</h3>
+              <p class="text-sm text-ochre font-medium mt-0.5">$3.00 / unit</p>
+            </div>
+
+            <!-- 列表-产品卡片3 -->
+            <div class="product-card bg-surface-container rounded-md p-4 border-2 border-transparent" id="product-3" data-product="Heather Grey Striped" data-price="$3.50">
+              <div class="check-overlay">
+                <i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>
+              </div>
+              <img src="https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=200&h=150&fit=crop" alt="Heather Grey Striped" data-category="服饰时尚" class="w-full h-28 object-cover rounded-md mb-3" />
+              <h3 class="text-sm font-semibold text-on-surface">Heather Grey Striped</h3>
+              <p class="text-sm text-ochre font-medium mt-0.5">$3.50 / unit</p>
+            </div>
+
+            <!-- 列表-产品卡片4 -->
+            <div class="product-card bg-surface-container rounded-md p-4 border-2 border-transparent" id="product-4" data-product="Black Zip Polo" data-price="$4.50">
+              <div class="check-overlay">
+                <i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>
+              </div>
+              <img src="https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=200&h=150&fit=crop" alt="Black Zip Polo" data-category="服饰时尚" class="w-full h-28 object-cover rounded-md mb-3" />
+              <h3 class="text-sm font-semibold text-on-surface">Black Zip Polo</h3>
+              <p class="text-sm text-ochre font-medium mt-0.5">$4.50 / unit</p>
+            </div>
+
+            <!-- 列表-产品卡片5 -->
+            <div class="product-card bg-surface-container rounded-md p-4 border-2 border-transparent" id="product-5" data-product="Cable Knit Sweater" data-price="$5.00">
+              <div class="check-overlay">
+                <i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>
+              </div>
+              <img src="https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=200&h=150&fit=crop" alt="Cable Knit Sweater" data-category="服饰时尚" class="w-full h-28 object-cover rounded-md mb-3" />
+              <h3 class="text-sm font-semibold text-on-surface">Cable Knit Sweater</h3>
+              <p class="text-sm text-ochre font-medium mt-0.5">$5.00 / unit</p>
+            </div>
+
+            <!-- 列表-产品卡片6 -->
+            <div class="product-card bg-surface-container rounded-md p-4 border-2 border-transparent" id="product-6" data-product="Brown Contrast Polo" data-price="$4.30">
+              <div class="check-overlay">
+                <i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>
+              </div>
+              <img src="https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=200&h=150&fit=crop" alt="Brown Contrast Polo" data-category="服饰时尚" class="w-full h-28 object-cover rounded-md mb-3" />
+              <h3 class="text-sm font-semibold text-on-surface">Brown Contrast Polo</h3>
+              <p class="text-sm text-ochre font-medium mt-0.5">$4.30 / unit</p>
+            </div>
+
+          </div>
+
+          <!-- Custom Requirements -->
+          <div>
+            <label for="input-custom-req" class="block text-sm font-medium text-on-surface mb-1.5">Or describe your custom requirements</label>
+            <textarea id="input-custom-req" rows="3" class="w-full bg-surface-container border-none rounded-md px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors resize-none" placeholder="Describe any custom product requirements..."></textarea>
+          </div>
+        </div>
+
+        <!-- Step 3: Requirements -->
+        <div class="wizard-step" id="step-3">
+          <h2 class="font-serif text-2xl font-semibold text-on-surface mb-1">Requirements</h2>
+          <p class="text-sm text-on-surface-variant mb-8">Specify your order details and preferences</p>
+
+          <div class="space-y-5">
+            <!-- Estimated Quantity -->
+            <div>
+              <label for="input-quantity" class="block text-sm font-medium text-on-surface mb-1.5">Estimated Quantity</label>
+              <select id="input-quantity" class="has-chevron w-full bg-surface-container border-none rounded-md px-4 py-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors">
+                <option value="" disabled selected>Select quantity range</option>
+                <option value="300-500">300 – 500</option>
+                <option value="500-1000">500 – 1,000</option>
+                <option value="1000-3000">1,000 – 3,000</option>
+                <option value="3000-5000">3,000 – 5,000</option>
+                <option value="5000+">5,000+</option>
+              </select>
+            </div>
+            <!-- Target Price Range -->
+            <div>
+              <label for="input-price-range" class="block text-sm font-medium text-on-surface mb-1.5">Target Price Range</label>
+              <select id="input-price-range" class="has-chevron w-full bg-surface-container border-none rounded-md px-4 py-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors">
+                <option value="" disabled selected>Select price range</option>
+                <option value="under-3">Under $3 / unit</option>
+                <option value="3-4">$3 – $4 / unit</option>
+                <option value="4-5">$4 – $5 / unit</option>
+                <option value="5+">$5+ / unit</option>
+              </select>
+            </div>
+            <!-- Timeline -->
+            <div>
+              <label for="input-timeline" class="block text-sm font-medium text-on-surface mb-1.5">Timeline</label>
+              <select id="input-timeline" class="has-chevron w-full bg-surface-container border-none rounded-md px-4 py-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors">
+                <option value="" disabled selected>Select timeline</option>
+                <option value="urgent">Urgent (&lt; 2 weeks)</option>
+                <option value="standard">Standard (3 – 4 weeks)</option>
+                <option value="flexible">Flexible (4+ weeks)</option>
+              </select>
+            </div>
+            <!-- Customization Needed -->
+            <div>
+              <p class="text-sm font-medium text-on-surface mb-3">Customization Needed</p>
+              <div class="space-y-2.5">
+                <!-- 列表-复选框选项1 -->
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" id="chk-custom-colors" class="w-4 h-4 accent-ochre rounded" />
+                  <span class="text-sm text-on-surface">Custom Colors</span>
+                </label>
+                <!-- 列表-复选框选项2 -->
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" id="chk-custom-labels" class="w-4 h-4 accent-ochre rounded" />
+                  <span class="text-sm text-on-surface">Custom Labels / Tags</span>
+                </label>
+                <!-- 列表-复选框选项3 -->
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" id="chk-custom-packaging" class="w-4 h-4 accent-ochre rounded" />
+                  <span class="text-sm text-on-surface">Custom Packaging</span>
+                </label>
+                <!-- 列表-复选框选项4 -->
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" id="chk-custom-design" class="w-4 h-4 accent-ochre rounded" />
+                  <span class="text-sm text-on-surface">Custom Design</span>
+                </label>
+                <!-- 列表-复选框选项5 -->
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" id="chk-none" class="w-4 h-4 accent-ochre rounded" />
+                  <span class="text-sm text-on-surface">None</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Message -->
+        <div class="wizard-step" id="step-4">
+          <h2 class="font-serif text-2xl font-semibold text-on-surface mb-1">Message</h2>
+          <p class="text-sm text-on-surface-variant mb-8">Any final details before submitting</p>
+
+          <div class="space-y-6">
+            <!-- Additional Message -->
+            <div>
+              <label for="input-message" class="block text-sm font-medium text-on-surface mb-1.5">Additional Message</label>
+              <textarea id="input-message" rows="4" class="w-full bg-surface-container border-none rounded-md px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors resize-none" placeholder="Any additional requirements, questions, or details..."></textarea>
+            </div>
+
+            <!-- Preferred Contact Method -->
+            <div>
+              <p class="text-sm font-medium text-on-surface mb-3">Preferred Contact Method</p>
+              <div class="space-y-2.5">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="contact-method" id="radio-email" value="email" class="w-4 h-4 accent-ochre" checked />
+                  <span class="text-sm text-on-surface">Email</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="contact-method" id="radio-phone" value="phone" class="w-4 h-4 accent-ochre" />
+                  <span class="text-sm text-on-surface">Phone</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input type="radio" name="contact-method" id="radio-whatsapp" value="whatsapp" class="w-4 h-4 accent-ochre" />
+                  <span class="text-sm text-on-surface">WhatsApp</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Summary Card -->
+            <div class="bg-surface-container rounded-md p-5">
+              <h3 class="text-sm font-semibold text-on-surface mb-3">Summary</h3>
+              <div id="summary-content">
+                <div class="space-y-2">
+                  <div class="flex justify-between text-sm">
+                    <span class="text-on-surface-variant">Company</span>
+                    <span class="text-on-surface font-medium" id="summary-company">—</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-on-surface-variant">Email</span>
+                    <span class="text-on-surface font-medium" id="summary-email">—</span>
+                  </div>
+                  <div class="border-t border-outline-variant/20 my-2"></div>
+                  <div>
+                    <span class="text-sm text-on-surface-variant">Selected Products</span>
+                    <p class="text-sm text-on-surface font-medium mt-0.5" id="summary-products">None selected</p>
+                  </div>
+                  <div class="border-t border-outline-variant/20 my-2"></div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-on-surface-variant">Quantity</span>
+                    <span class="text-on-surface font-medium" id="summary-quantity">—</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-on-surface-variant">Price Range</span>
+                    <span class="text-on-surface font-medium" id="summary-price">—</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-on-surface-variant">Timeline</span>
+                    <span class="text-on-surface font-medium" id="summary-timeline">—</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-on-surface-variant">Customization</span>
+                    <span class="text-on-surface font-medium" id="summary-customization">—</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Success State -->
+        <div class="wizard-step" id="step-success">
+          <div class="text-center py-10">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/15 mb-6">
+              <i data-lucide="check" class="w-8 h-8 text-success"></i>
+            </div>
+            <h2 class="font-serif text-3xl font-bold text-on-surface mb-3">Thank You!</h2>
+            <p class="text-base text-on-surface-variant max-w-md mx-auto mb-8">We've received your inquiry and will respond within 24 hours.</p>
+            <a href="products.html" class="inline-flex items-center gap-2 bg-ochre text-white px-6 py-3 text-sm font-medium tracking-wide hover:bg-ochre-dark transition-colors" style="border-radius: var(--radius-lg);">
+              <i data-lucide="arrow-left" class="w-4 h-4"></i>
+              Back to Collections
+            </a>
+          </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div id="wizard-nav" class="flex items-center justify-between mt-10 pt-6 border-t border-outline-variant/20">
+          <button id="btn-prev" class="inline-flex items-center gap-2 bg-surface-container text-on-surface px-6 py-3 text-sm font-medium hover:bg-surface-container-high active:scale-[0.98] transition-all" style="border-radius: var(--radius-lg); display: none;">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Previous
+          </button>
+          <div></div>
+          <button id="btn-next" class="inline-flex items-center gap-2 bg-ochre text-white px-6 py-3 text-sm font-medium tracking-wide hover:bg-ochre-dark active:scale-[0.98] transition-all" style="border-radius: var(--radius-lg);">
+            Next Step
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+          <button id="btn-submit" class="inline-flex items-center gap-2 bg-ochre text-white px-6 py-3 text-sm font-medium tracking-wide hover:bg-ochre-dark active:scale-[0.98] transition-all" style="border-radius: var(--radius-lg); display: none;">
+            Submit Inquiry
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- @main-content:end -->
+  </main>
+
+  <script>
+    // Mobile menu toggle
+    $('#mobile-menu-btn').on('click', function() {
+      $('#mobile-menu').toggleClass('hidden');
+    });
+
+    // Set active nav link based on current page
+    $(function() {
+      const page = window.location.pathname.split('/').pop() || 'home.html';
+      $('header nav a, #mobile-menu nav a').each(function() {
+        const href = $(this).attr('href');
+        if (href === page || (page === '' && href === 'home.html')) {
+          $(this).removeClass('text-on-surface-variant').addClass('text-on-surface');
+          if ($(this).closest('#mobile-menu').length === 0 && !$(this).hasClass('bg-ochre')) {
+            $(this).css('border-bottom', '2px solid var(--color-ochre)').css('padding-bottom', '2px');
+          }
+        }
+      });
+    });
+
+    // ---- Wizard Logic ----
+    $(function() {
+      let currentStep = 1;
+      const totalSteps = 4;
+
+      function updateStepUI() {
+        // Update step circles and labels
+        for (let i = 1; i <= totalSteps; i++) {
+          const circle = $('#step-circle-' + i);
+          const label = $('#step-label-' + i);
+          circle.removeClass('active completed future');
+
+          if (i < currentStep) {
+            // Completed step
+            circle.addClass('completed');
+            circle.html('<i data-lucide="check" class="w-5 h-5"></i>');
+            label.removeClass('text-on-surface-variant').addClass('text-on-surface');
+          } else if (i === currentStep) {
+            // Active step
+            circle.addClass('active');
+            const icons = { 1: 'building-2', 2: 'shirt', 3: 'clipboard-list', 4: 'message-square' };
+            circle.html('<i data-lucide="' + icons[i] + '" class="w-5 h-5"></i>');
+            label.removeClass('text-on-surface-variant').addClass('text-on-surface');
+          } else {
+            // Future step
+            circle.addClass('future');
+            const icons = { 1: 'building-2', 2: 'shirt', 3: 'clipboard-list', 4: 'message-square' };
+            circle.html('<i data-lucide="' + icons[i] + '" class="w-5 h-5"></i>');
+            label.removeClass('text-on-surface').addClass('text-on-surface-variant');
+          }
+        }
+
+        // Update connectors
+        for (let i = 1; i < totalSteps; i++) {
+          const connector = $('#step-connector-' + i);
+          if (i < currentStep) {
+            connector.addClass('completed');
+          } else {
+            connector.removeClass('completed');
+          }
+        }
+
+        // Re-create lucide icons
+        lucide.createIcons();
+
+        // Show/hide wizard steps with fade
+        for (let i = 1; i <= totalSteps; i++) {
+          if (i === currentStep) {
+            $('#step-' + i).addClass('active').css('opacity', 0).animate({ opacity: 1 }, 250);
+          } else {
+            $('#step-' + i).removeClass('active');
+          }
+        }
+
+        // Navigation buttons
+        if (currentStep === 1) {
+          $('#btn-prev').hide();
+        } else {
+          $('#btn-prev').show();
+        }
+
+        if (currentStep === totalSteps) {
+          $('#btn-next').hide();
+          $('#btn-submit').show();
+        } else {
+          $('#btn-next').show();
+          $('#btn-submit').hide();
+        }
+
+        // Update summary on step 4
+        if (currentStep === 4) {
+          updateSummary();
+        }
+      }
+
+      function updateSummary() {
+        // Company info
+        var company = $('#input-company').val();
+        var email = $('#input-email').val();
+        $('#summary-company').text(company || '—');
+        $('#summary-email').text(email || '—');
+
+        // Selected products
+        var selectedProducts = [];
+        $('.product-card.selected').each(function() {
+          selectedProducts.push($(this).data('product') + ' (' + $(this).data('price') + ')');
+        });
+        $('#summary-products').text(selectedProducts.length > 0 ? selectedProducts.join(', ') : 'None selected');
+
+        // Requirements
+        $('#summary-quantity').text($('#input-quantity').val() || '—');
+        $('#summary-price').text($('#input-price-range').val() || '—');
+        $('#summary-timeline').text($('#input-timeline').val() || '—');
+
+        // Customization
+        var customizations = [];
+        if ($('#chk-custom-colors').is(':checked')) customizations.push('Custom Colors');
+        if ($('#chk-custom-labels').is(':checked')) customizations.push('Custom Labels');
+        if ($('#chk-custom-packaging').is(':checked')) customizations.push('Custom Packaging');
+        if ($('#chk-custom-design').is(':checked')) customizations.push('Custom Design');
+        if ($('#chk-none').is(':checked')) customizations.push('None');
+        $('#summary-customization').text(customizations.length > 0 ? customizations.join(', ') : '—');
+      }
+
+      // Next button
+      $('#btn-next').on('click', function() {
+        if (currentStep < totalSteps) {
+          currentStep++;
+          updateStepUI();
+        }
+      });
+
+      // Previous button
+      $('#btn-prev').on('click', function() {
+        if (currentStep > 1) {
+          currentStep--;
+          updateStepUI();
+        }
+      });
+
+      // Submit button
+      $('#btn-submit').on('click', function() {
+        // Hide all steps and nav, show success
+        for (let i = 1; i <= totalSteps; i++) {
+          $('#step-' + i).removeClass('active');
+        }
+        $('#wizard-nav').hide();
+        $('#step-indicator').hide();
+        $('#step-success').addClass('active').css('opacity', 0).animate({ opacity: 1 }, 400);
+      });
+
+      // Product card selection toggle
+      $('.product-card').on('click', function() {
+        $(this).toggleClass('selected');
+      });
+
+      // "None" checkbox logic: if "None" checked, uncheck others; if others checked, uncheck "None"
+      $('#chk-none').on('change', function() {
+        if ($(this).is(':checked')) {
+          $('#chk-custom-colors, #chk-custom-labels, #chk-custom-packaging, #chk-custom-design').prop('checked', false);
+        }
+      });
+      $('#chk-custom-colors, #chk-custom-labels, #chk-custom-packaging, #chk-custom-design').on('change', function() {
+        if ($(this).is(':checked')) {
+          $('#chk-none').prop('checked', false);
+        }
+      });
+    });
+  </script>
+  <script>lucide.createIcons();</script>
+</body>
+
+</html>

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Fonts: Playfair Display (serif headings) + Noto Serif SC (CN headings) + Inter (body) -->
+  <link href="https://fonts.googleapis.cn/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/jquery/jquery-3.7.1.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/lucide/lucide-1.11.0.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/tailwindcss/tailwindcss-browser-4.2.4.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      /* === 品牌色 === */
+      --color-primary:              #2C2C2C;
+      --color-primary-container:    #3D3D3D;
+      --color-on-primary:           #F5F0EB;
+      /* === 背景 / 表面 === */
+      --color-background:                 #F5F0EB;
+      --color-surface-container-lowest:   #FFFFFF;
+      --color-surface:                    #FFFFFF;
+      --color-surface-container:          #EDEBE8;
+      --color-surface-container-high:     #E5E2DD;
+      --color-surface-container-highest:  #DDD9D4;
+      /* === 文字 === */
+      --color-on-surface:           #2C2C2C;
+      --color-on-surface-variant:   #7A756E;
+      /* === 功能色 === */
+      --color-success:  #22c55e;
+      --color-error:    #ef4444;
+      --color-warning:  #f59e0b;
+      /* === 品牌点缀色 === */
+      --color-ochre:       #B8956A;
+      --color-ochre-light: #D4B896;
+      --color-ochre-dark:  #96754E;
+      /* === 边框 === */
+      --color-outline:          #D9D4CE;
+      --color-outline-variant:  #E5E2DD;
+      /* === 圆角 (max 6px per DESIGN.md) === */
+      --radius-sm:   0.125rem;
+      --radius-md:   0.25rem;
+      --radius-lg:   0.375rem;
+      --radius-xl:   0.5rem;
+      --radius-2xl:  0.75rem;
+      --radius-full: 9999px;
+      /* === 阴影 (max 2px blur per DESIGN.md) === */
+      --shadow-card:   0 1px 2px rgba(0,0,0,0.08);
+      --shadow-float:  0 2px 2px rgba(0,0,0,0.1);
+      --shadow-dialog: 0 2px 2px rgba(0,0,0,0.12);
+      /* === 字体 === */
+      --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --font-serif: "Playfair Display", "Noto Serif SC", ui-serif, Georgia, serif;
+    }
+  </style>
+
+  <!-- 图片兜底 -->
+  <script>
+    document.addEventListener('error', function (e) {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || img.dataset.fallback) return;
+      img.dataset.fallback = '1';
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cat = img.getAttribute('data-category') || '其他';
+      const alt = img.getAttribute('alt') || '';
+      const label = esc(alt.length > 8 ? alt.slice(0, 8) + '…' : alt);
+      const icons = { '人物': '👤', '自然风景': '🏞', '动物': '🐾', '建筑城市': '🏙', '运动体育': '⚽', '交通工具': '🚗', '食物': '🍽', '服饰时尚': '👗', '商业科技': '💼', '游戏娱乐': '🎮', '艺术': '🎨', '其他': '🖼' };
+      const icon = icons[cat] || '🖼';
+      const w = img.width || 400, h = img.height || 300;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="45%" text-anchor="middle" font-size="${Math.min(w, h) * 0.18}" dominant-baseline="central">${icon}</text><text x="50%" y="68%" text-anchor="middle" font-size="${Math.min(w, h) * 0.07}" fill="%239ca3af" font-family="system-ui,sans-serif" dominant-baseline="central">${label}</text></svg>`;
+      img.src = 'data:image/svg+xml,' + svg;
+    }, true);
+  </script>
+
+  <style>
+    /* Fade-in animation for hero text elements */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hero-fade-in {
+      opacity: 0;
+      animation: fadeInUp 0.8s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+    }
+    .hero-fade-in-delay-1 { animation-delay: 0.15s; }
+    .hero-fade-in-delay-2 { animation-delay: 0.3s; }
+    .hero-fade-in-delay-3 { animation-delay: 0.45s; }
+    .hero-fade-in-delay-4 { animation-delay: 0.6s; }
+  </style>
+</head>
+
+<body class="bg-background text-on-surface font-sans">
+
+  <!-- @nav:start 导航组件，不需要的页面则不要复制此段 -->
+  <header class="bg-surface/95 backdrop-blur-sm sticky top-0 z-40 border-b border-outline-variant/30">
+    <div class="max-w-7xl mx-auto h-16 flex items-center justify-between px-6">
+      <!-- Logo -->
+      <a href="home.html" class="flex items-center gap-3">
+        <span class="font-serif text-xl font-semibold tracking-wide text-on-surface">CHENGFENG</span>
+        <span class="text-xs text-on-surface-variant tracking-widest uppercase">International</span>
+      </a>
+      <!-- Desktop Nav -->
+      <nav class="hidden md:flex items-center gap-8">
+        <a href="home.html" class="text-sm font-medium text-on-surface hover:text-on-surface transition-colors tracking-wide" style="border-bottom: 2px solid var(--color-ochre); padding-bottom: 2px;" aria-current="page">Home</a>
+        <a href="products.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">Collections</a>
+        <a href="about.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">About</a>
+        <a href="inquiry.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">Inquiry</a>
+      </nav>
+      <!-- CTA + Mobile -->
+      <div class="flex items-center gap-4">
+        <a href="inquiry.html" class="hidden md:inline-flex bg-ochre text-white px-5 py-2 text-sm font-medium tracking-wide hover:bg-ochre-dark transition-colors" style="border-radius: var(--radius-lg);">Get Quote</a>
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-btn" class="md:hidden text-on-surface" aria-label="Menu">
+          <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+      </div>
+    </div>
+    <!-- Mobile Nav -->
+    <div id="mobile-menu" class="md:hidden hidden border-t border-outline-variant/30 bg-surface">
+      <nav class="flex flex-col px-6 py-4 gap-4">
+        <a href="home.html" class="text-sm font-medium text-on-surface transition-colors" aria-current="page">Home</a>
+        <a href="products.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Collections</a>
+        <a href="about.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">About</a>
+        <a href="inquiry.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Inquiry</a>
+        <a href="inquiry.html" class="bg-ochre text-white px-5 py-2 text-sm font-medium tracking-wide text-center hover:bg-ochre-dark transition-colors" style="border-radius: var(--radius-lg);">Get Quote</a>
+      </nav>
+    </div>
+  </header>
+  <!-- @nav:end 导航组件，不需要的页面则不要复制此段 -->
+
+  <main class="max-w-7xl mx-auto">
+    <!-- @main-content:start -->
+
+    <!-- ==================== 1. HERO SECTION ==================== -->
+    <section id="hero" class="flex flex-col md:flex-row min-h-[560px]">
+      <!-- Left: Large product image (60%) -->
+      <div class="md:w-[60%] relative overflow-hidden">
+        <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?w=960&h=720&fit=crop&q=80" alt="Premium men's knitwear polo shirt on model" data-category="服饰时尚" class="w-full h-[320px] md:h-full object-cover" />
+      </div>
+      <!-- Right: Brand text (40%) -->
+      <div class="md:w-[40%] flex flex-col justify-center px-8 md:px-12 py-12 md:py-16 bg-background">
+        <span class="hero-fade-in text-[11px] font-medium tracking-[0.2em] uppercase text-ochre mb-5">PREMIUM MEN'S KNITWEAR MANUFACTURER</span>
+        <h1 class="hero-fade-in hero-fade-in-delay-1 font-serif text-4xl md:text-5xl font-semibold leading-[1.15] tracking-wide text-on-surface mb-6">Crafting Excellence<br/>in Every Thread</h1>
+        <p class="hero-fade-in hero-fade-in-delay-2 text-sm leading-relaxed text-on-surface-variant mb-8 max-w-sm">Chengfeng International delivers premium B2B wholesale men's knitwear, crafted with decades of manufacturing expertise. From concept to container, we empower brands with quality, consistency, and competitive pricing.</p>
+        <div class="hero-fade-in hero-fade-in-delay-3">
+          <a href="inquiry.html" id="btn-request-catalog" class="inline-flex items-center gap-2 bg-ochre text-white px-7 py-3 text-sm font-medium tracking-wide hover:bg-ochre-dark transition-colors" style="border-radius: var(--radius-lg);">
+            Request Catalog
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 2. TRUST BAR ==================== -->
+    <section id="trust-bar" class="bg-surface-container py-10 md:py-12">
+      <div class="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-6">
+        <!-- Stat 1: Years Experience -->
+        <div class="flex items-center gap-4">
+          <i data-lucide="calendar-check" class="w-8 h-8 text-ochre shrink-0"></i>
+          <div>
+            <span class="text-xl font-semibold text-on-surface">15+</span>
+            <p class="text-xs text-on-surface-variant tracking-wide">Years Experience</p>
+          </div>
+        </div>
+        <!-- Stat 2: Retail Partners -->
+        <div class="flex items-center gap-4">
+          <i data-lucide="handshake" class="w-8 h-8 text-ochre shrink-0"></i>
+          <div>
+            <span class="text-xl font-semibold text-on-surface">500+</span>
+            <p class="text-xs text-on-surface-variant tracking-wide">Retail Partners</p>
+          </div>
+        </div>
+        <!-- Stat 3: BSCI Certified -->
+        <div class="flex items-center gap-4">
+          <i data-lucide="shield-check" class="w-8 h-8 text-ochre shrink-0"></i>
+          <div>
+            <span class="text-xl font-semibold text-on-surface">BSCI</span>
+            <p class="text-xs text-on-surface-variant tracking-wide">Certified</p>
+          </div>
+        </div>
+        <!-- Stat 4: MOQ -->
+        <div class="flex items-center gap-4">
+          <i data-lucide="package" class="w-8 h-8 text-ochre shrink-0"></i>
+          <div>
+            <span class="text-xl font-semibold text-on-surface">300 pcs</span>
+            <p class="text-xs text-on-surface-variant tracking-wide">MOQ From</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3. COLLECTIONS SECTION ==================== -->
+    <section id="collections" class="py-20 md:py-24 px-6">
+      <!-- Section heading -->
+      <div class="mb-12">
+        <h2 class="font-serif text-3xl md:text-[34px] font-semibold tracking-wide text-on-surface">Our Collections</h2>
+        <div class="w-16 h-[3px] bg-ochre mt-4"></div>
+      </div>
+      <!-- Collection cards grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+        <!-- Collection card 1: Polos -->
+        <a href="products.html?category=polos" class="group relative overflow-hidden cursor-pointer" style="border-radius: var(--radius-lg); aspect-ratio: 3/4;">
+          <img src="https://images.unsplash.com/photo-1625910513413-5fc830c70099?w=480&h=640&fit=crop&q=80" alt="Men's polo shirts collection" data-category="服饰时尚" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-all duration-300 group-hover:from-black/70"></div>
+          <div class="absolute bottom-0 left-0 right-0 p-5">
+            <h3 class="font-serif text-xl font-semibold text-white tracking-wide">Polos</h3>
+            <p class="text-xs text-white/75 mt-1">4 items</p>
+          </div>
+        </a>
+        <!-- Collection card 2: T-Shirts -->
+        <a href="products.html?category=tshirts" class="group relative overflow-hidden cursor-pointer" style="border-radius: var(--radius-lg); aspect-ratio: 3/4;">
+          <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=480&h=640&fit=crop&q=80" alt="Men's t-shirts collection" data-category="服饰时尚" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-all duration-300 group-hover:from-black/70"></div>
+          <div class="absolute bottom-0 left-0 right-0 p-5">
+            <h3 class="font-serif text-xl font-semibold text-white tracking-wide">T-Shirts</h3>
+            <p class="text-xs text-white/75 mt-1">3 items</p>
+          </div>
+        </a>
+        <!-- Collection card 3: Striped Tees -->
+        <a href="products.html?category=striped" class="group relative overflow-hidden cursor-pointer" style="border-radius: var(--radius-lg); aspect-ratio: 3/4;">
+          <img src="https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=480&h=640&fit=crop&q=80" alt="Striped tee collection" data-category="服饰时尚" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-all duration-300 group-hover:from-black/70"></div>
+          <div class="absolute bottom-0 left-0 right-0 p-5">
+            <h3 class="font-serif text-xl font-semibold text-white tracking-wide">Striped Tees</h3>
+            <p class="text-xs text-white/75 mt-1">3 items</p>
+          </div>
+        </a>
+        <!-- Collection card 4: Knitwear -->
+        <a href="products.html?category=knitwear" class="group relative overflow-hidden cursor-pointer" style="border-radius: var(--radius-lg); aspect-ratio: 3/4;">
+          <img src="https://images.unsplash.com/photo-1434389677669-e08b4cda3f0a?w=480&h=640&fit=crop&q=80" alt="Men's knitwear collection" data-category="服饰时尚" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-all duration-300 group-hover:from-black/70"></div>
+          <div class="absolute bottom-0 left-0 right-0 p-5">
+            <h3 class="font-serif text-xl font-semibold text-white tracking-wide">Knitwear</h3>
+            <p class="text-xs text-white/75 mt-1">2 items</p>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- ==================== 4. FEATURED PRODUCTS SECTION ==================== -->
+    <section id="featured-products" class="py-20 md:py-24 px-6">
+      <!-- Section heading -->
+      <div class="mb-12">
+        <h2 class="font-serif text-3xl md:text-[34px] font-semibold tracking-wide text-on-surface">Featured Styles</h2>
+        <div class="w-16 h-[3px] bg-ochre mt-4"></div>
+      </div>
+      <!-- Asymmetric masonry grid: 2 large (row-span-2) + 1 tall (row-span-2) + 2 standard -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 auto-rows-auto">
+        <!-- Product card 1: Classic Polo — large (spans 2 rows) -->
+        <div id="product-card-1" class="bg-surface shadow-card hover:shadow-float hover:-translate-y-0.5 transition-all duration-300 md:row-span-2" style="border-radius: var(--radius-lg);">
+          <div class="overflow-hidden" style="border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
+            <img src="https://images.unsplash.com/photo-1625910513413-5fc830c70099?w=600&h=720&fit=crop&q=80" alt="Classic cotton pique polo shirt" data-category="服饰时尚" class="w-full h-[240px] md:h-[360px] object-cover" />
+          </div>
+          <div class="p-4 md:p-5">
+            <h3 class="font-serif text-lg font-semibold text-on-surface tracking-wide">Classic Piqué Polo</h3>
+            <p class="text-sm text-ochre font-medium mt-1.5">From $8.50/unit</p>
+            <span class="inline-block text-[11px] text-on-surface-variant bg-surface-container px-2 py-0.5 mt-2" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+            <div class="mt-3">
+              <a href="product-detail.html?id=cf-polo-001" class="text-sm text-ochre font-medium hover:text-ochre-dark transition-colors inline-flex items-center gap-1">
+                Request Quote <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        <!-- Product card 2: Merino Knit Sweater — standard -->
+        <div id="product-card-2" class="bg-surface shadow-card hover:shadow-float hover:-translate-y-0.5 transition-all duration-300" style="border-radius: var(--radius-lg);">
+          <div class="overflow-hidden" style="border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
+            <img src="https://images.unsplash.com/photo-1434389677669-e08b4cda3f0a?w=400&h=300&fit=crop&q=80" alt="Merino wool knit sweater" data-category="服饰时尚" class="w-full h-[200px] object-cover" />
+          </div>
+          <div class="p-4 md:p-5">
+            <h3 class="font-serif text-lg font-semibold text-on-surface tracking-wide">Merino Knit Sweater</h3>
+            <p class="text-sm text-ochre font-medium mt-1.5">From $14.20/unit</p>
+            <span class="inline-block text-[11px] text-on-surface-variant bg-surface-container px-2 py-0.5 mt-2" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+            <div class="mt-3">
+              <a href="product-detail.html?id=cf-knit-001" class="text-sm text-ochre font-medium hover:text-ochre-dark transition-colors inline-flex items-center gap-1">
+                Request Quote <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        <!-- Product card 3: Striped Crew Tee — tall (spans 2 rows) -->
+        <div id="product-card-3" class="bg-surface shadow-card hover:shadow-float hover:-translate-y-0.5 transition-all duration-300 md:row-span-2" style="border-radius: var(--radius-lg);">
+          <div class="overflow-hidden" style="border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
+            <img src="https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=600&h=720&fit=crop&q=80" alt="Striped crew neck t-shirt" data-category="服饰时尚" class="w-full h-[240px] md:h-[360px] object-cover" />
+          </div>
+          <div class="p-4 md:p-5">
+            <h3 class="font-serif text-lg font-semibold text-on-surface tracking-wide">Striped Crew Tee</h3>
+            <p class="text-sm text-ochre font-medium mt-1.5">From $6.80/unit</p>
+            <span class="inline-block text-[11px] text-on-surface-variant bg-surface-container px-2 py-0.5 mt-2" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+            <div class="mt-3">
+              <a href="product-detail.html?id=cf-stripe-001" class="text-sm text-ochre font-medium hover:text-ochre-dark transition-colors inline-flex items-center gap-1">
+                Request Quote <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        <!-- Product card 4: Premium V-Neck — standard -->
+        <div id="product-card-4" class="bg-surface shadow-card hover:shadow-float hover:-translate-y-0.5 transition-all duration-300" style="border-radius: var(--radius-lg);">
+          <div class="overflow-hidden" style="border-radius: var(--radius-lg) var(--radius-lg) 0 0;">
+            <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=300&fit=crop&q=80" alt="Premium v-neck t-shirt" data-category="服饰时尚" class="w-full h-[200px] object-cover" />
+          </div>
+          <div class="p-4 md:p-5">
+            <h3 class="font-serif text-lg font-semibold text-on-surface tracking-wide">Premium V-Neck</h3>
+            <p class="text-sm text-ochre font-medium mt-1.5">From $7.30/unit</p>
+            <span class="inline-block text-[11px] text-on-surface-variant bg-surface-container px-2 py-0.5 mt-2" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+            <div class="mt-3">
+              <a href="product-detail.html?id=cf-vneck-001" class="text-sm text-ochre font-medium hover:text-ochre-dark transition-colors inline-flex items-center gap-1">
+                Request Quote <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        <!-- Product card 5: Cable Knit Cardigan — standard (full width on the row) -->
+        <div id="product-card-5" class="bg-surface shadow-card hover:shadow-float hover:-translate-y-0.5 transition-all duration-300 md:col-span-3" style="border-radius: var(--radius-lg);">
+          <div class="flex flex-col md:flex-row">
+            <div class="overflow-hidden md:w-[30%]" style="border-radius: var(--radius-lg) 0 0 0;">
+              <img src="https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&h=300&fit=crop&q=80" alt="Cable knit cardigan" data-category="服饰时尚" class="w-full h-[200px] md:h-full object-cover" />
+            </div>
+            <div class="p-5 md:p-6 flex flex-col justify-center md:w-[70%]">
+              <h3 class="font-serif text-lg font-semibold text-on-surface tracking-wide">Cable Knit Cardigan</h3>
+              <p class="text-sm text-on-surface-variant mt-2 max-w-lg">Luxurious cable-knit construction in premium cotton blend. Perfect for autumn/winter collections with custom colorways available.</p>
+              <p class="text-sm text-ochre font-medium mt-2">From $16.90/unit</p>
+              <span class="inline-block text-[11px] text-on-surface-variant bg-surface-container px-2 py-0.5 mt-2 w-fit" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+              <div class="mt-3">
+                <a href="product-detail.html?id=cf-cardi-001" class="text-sm text-ochre font-medium hover:text-ochre-dark transition-colors inline-flex items-center gap-1">
+                  Request Quote <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 5. WHY CHOOSE US SECTION ==================== -->
+    <section id="why-us" class="py-20 md:py-24 px-6 bg-surface-container">
+      <div class="max-w-7xl mx-auto">
+        <!-- Section heading -->
+        <div class="mb-12">
+          <h2 class="font-serif text-3xl md:text-[34px] font-semibold tracking-wide text-on-surface">Why Partner With Us</h2>
+          <div class="w-16 h-[3px] bg-ochre mt-4"></div>
+        </div>
+        <!-- 3 cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Card 1: Factory Direct -->
+          <div class="bg-surface p-7 md:p-8" style="border-radius: var(--radius-lg);">
+            <i data-lucide="factory" class="w-8 h-8 text-ochre mb-5"></i>
+            <h3 class="font-serif text-xl font-semibold text-on-surface tracking-wide mb-3">Factory Direct</h3>
+            <p class="text-sm leading-relaxed text-on-surface-variant">No middleman pricing. As a direct manufacturer, we offer transparent, competitive wholesale rates that maximize your margin without compromising on quality.</p>
+          </div>
+          <!-- Card 2: Quality Guaranteed -->
+          <div class="bg-surface p-7 md:p-8" style="border-radius: var(--radius-lg);">
+            <i data-lucide="shield-check" class="w-8 h-8 text-ochre mb-5"></i>
+            <h3 class="font-serif text-xl font-semibold text-on-surface tracking-wide mb-3">Quality Guaranteed</h3>
+            <p class="text-sm leading-relaxed text-on-surface-variant">BSCI &amp; OEKO-TEX certified production lines ensure every garment meets international standards. Rigorous QC at every stage, from yarn to finished product.</p>
+          </div>
+          <!-- Card 3: Flexible MOQ -->
+          <div class="bg-surface p-7 md:p-8" style="border-radius: var(--radius-lg);">
+            <i data-lucide="layers" class="w-8 h-8 text-ochre mb-5"></i>
+            <h3 class="font-serif text-xl font-semibold text-on-surface tracking-wide mb-3">Flexible MOQ</h3>
+            <p class="text-sm leading-relaxed text-on-surface-variant">Starting from just 300 pieces per style, we make premium manufacturing accessible for emerging brands and established labels alike. Scale up at your own pace.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 6. BRAND STORY SECTION ==================== -->
+    <section id="brand-story" class="py-20 md:py-24 px-6">
+      <div class="flex flex-col md:flex-row gap-8 md:gap-12">
+        <!-- Left: Factory/production image -->
+        <div class="md:w-1/2 overflow-hidden" style="border-radius: var(--radius-lg);">
+          <img src="https://images.unsplash.com/photo-1558171813-4c088753af8f?w=640&h=480&fit=crop&q=80" alt="Chengfeng International textile production facility" data-category="商业科技" class="w-full h-[280px] md:h-[420px] object-cover" />
+        </div>
+        <!-- Right: Brand text -->
+        <div class="md:w-1/2 flex flex-col justify-center">
+          <h2 class="font-serif text-3xl md:text-[34px] font-semibold tracking-wide text-on-surface mb-5">Decades of Craftsmanship</h2>
+          <p class="text-sm leading-relaxed text-on-surface-variant mb-4">Since our founding, Chengfeng International has been dedicated to the art of men's knitwear manufacturing. Our state-of-the-art facilities combine time-honored techniques with modern precision, delivering garments that embody sophistication and durability.</p>
+          <p class="text-sm leading-relaxed text-on-surface-variant mb-6">From sourcing the finest yarns to final quality inspection, every step reflects our unwavering commitment to excellence. Partner with us, and bring your vision to life with a manufacturer that cares about every stitch.</p>
+          <a href="about.html" id="btn-learn-more" class="text-sm text-ochre font-medium hover:text-ochre-dark transition-colors inline-flex items-center gap-1.5">
+            Learn More <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- @main-content:end -->
+  </main>
+
+  <script>
+    // Mobile menu toggle
+    $('#mobile-menu-btn').on('click', function() {
+      $('#mobile-menu').toggleClass('hidden');
+    });
+
+    // Request Catalog button — navigates to inquiry page
+    $('#btn-request-catalog').on('click', function(e) {
+      e.preventDefault();
+      window.location.href = 'inquiry.html?type=catalog';
+    });
+
+    // Learn More button — navigates to about page
+    $('#btn-learn-more').on('click', function(e) {
+      e.preventDefault();
+      window.location.href = 'about.html';
+    });
+  </script>
+  <script>lucide.createIcons();</script>
+</body>
+
+</html>

@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Fonts: Playfair Display (serif headings) + Noto Serif SC (CN headings) + Inter (body) -->
+  <link href="https://fonts.googleapis.cn/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/jquery/jquery-3.7.1.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/lucide/lucide-1.11.0.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/tailwindcss/tailwindcss-browser-4.2.4.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      /* === 品牌色 === */
+      --color-primary:              #2C2C2C;
+      --color-primary-container:    #3D3D3D;
+      --color-on-primary:           #F5F0EB;
+      /* === 背景 / 表面 === */
+      --color-background:                 #F5F0EB;
+      --color-surface-container-lowest:   #FFFFFF;
+      --color-surface:                    #FFFFFF;
+      --color-surface-container:          #EDEBE8;
+      --color-surface-container-high:     #E5E2DD;
+      --color-surface-container-highest:  #DDD9D4;
+      /* === 文字 === */
+      --color-on-surface:           #2C2C2C;
+      --color-on-surface-variant:   #7A756E;
+      /* === 功能色 === */
+      --color-success:  #22c55e;
+      --color-error:    #ef4444;
+      --color-warning:  #f59e0b;
+      /* === 品牌点缀色 === */
+      --color-ochre:       #B8956A;
+      --color-ochre-light: #D4B896;
+      --color-ochre-dark:  #96754E;
+      /* === 边框 === */
+      --color-outline:          #D9D4CE;
+      --color-outline-variant:  #E5E2DD;
+      /* === 产品色板 === */
+      --color-swatch-navy:   #1a1a3e;
+      --color-swatch-white:  #f5f5f5;
+      --color-swatch-black:  #1a1a1a;
+      --color-swatch-brown:  #6b4423;
+      /* === 圆角 (max 6px per DESIGN.md) === */
+      --radius-sm:   0.125rem;
+      --radius-md:   0.25rem;
+      --radius-lg:   0.375rem;
+      --radius-xl:   0.5rem;
+      --radius-2xl:  0.75rem;
+      --radius-full: 9999px;
+      /* === 阴影 (max 2px blur per DESIGN.md) === */
+      --shadow-card:   0 1px 2px rgba(0,0,0,0.08);
+      --shadow-float:  0 2px 2px rgba(0,0,0,0.1);
+      --shadow-dialog: 0 2px 2px rgba(0,0,0,0.12);
+      /* === 字体 === */
+      --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --font-serif: "Playfair Display", "Noto Serif SC", ui-serif, Georgia, serif;
+    }
+  </style>
+
+  <!-- 图片兜底 -->
+  <script>
+    document.addEventListener('error', function (e) {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || img.dataset.fallback) return;
+      img.dataset.fallback = '1';
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cat = img.getAttribute('data-category') || '其他';
+      const alt = img.getAttribute('alt') || '';
+      const label = esc(alt.length > 8 ? alt.slice(0, 8) + '…' : alt);
+      const icons = { '人物': '👤', '自然风景': '🏞', '动物': '🐾', '建筑城市': '🏙', '运动体育': '⚽', '交通工具': '🚗', '食物': '🍽', '服饰时尚': '👗', '商业科技': '💼', '游戏娱乐': '🎮', '艺术': '🎨', '其他': '🖼' };
+      const icon = icons[cat] || '🖼';
+      const w = img.width || 400, h = img.height || 300;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="45%" text-anchor="middle" font-size="${Math.min(w, h) * 0.18}" dominant-baseline="central">${icon}</text><text x="50%" y="68%" text-anchor="middle" font-size="${Math.min(w, h) * 0.07}" fill="%239ca3af" font-family="system-ui,sans-serif" dominant-baseline="central">${label}</text></svg>`;
+      img.src = 'data:image/svg+xml,' + svg;
+    }, true);
+  </script>
+</head>
+
+<body class="bg-background text-on-surface font-sans">
+
+  <!-- @nav:start 导航组件，不需要的页面则不要复制此段 -->
+  <header class="bg-surface/95 backdrop-blur-sm sticky top-0 z-40 border-b border-outline-variant/30">
+    <div class="max-w-7xl mx-auto h-16 flex items-center justify-between px-6">
+      <!-- Logo -->
+      <a href="home.html" class="flex items-center gap-3">
+        <span class="font-serif text-xl font-semibold tracking-wide text-on-surface">CHENGFENG</span>
+        <span class="text-xs text-on-surface-variant tracking-widest uppercase">International</span>
+      </a>
+      <!-- Desktop Nav -->
+      <nav class="hidden md:flex items-center gap-8">
+        <a href="home.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">Home</a>
+        <a href="products.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide" aria-current="page" style="border-bottom:2px solid var(--color-ochre);padding-bottom:2px;color:var(--color-on-surface);">Collections</a>
+        <a href="about.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">About</a>
+        <a href="inquiry.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">Inquiry</a>
+      </nav>
+      <!-- CTA + Mobile -->
+      <div class="flex items-center gap-4">
+        <a href="inquiry.html" class="hidden md:inline-flex bg-ochre text-white px-5 py-2 text-sm font-medium tracking-wide hover:bg-ochre-dark transition-colors" style="border-radius: var(--radius-lg);">Get Quote</a>
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-btn" class="md:hidden text-on-surface" aria-label="Menu">
+          <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+      </div>
+    </div>
+    <!-- Mobile Nav -->
+    <div id="mobile-menu" class="md:hidden hidden border-t border-outline-variant/30 bg-surface">
+      <nav class="flex flex-col px-6 py-4 gap-4">
+        <a href="home.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Home</a>
+        <a href="products.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Collections</a>
+        <a href="about.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">About</a>
+        <a href="inquiry.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Inquiry</a>
+        <a href="inquiry.html" class="bg-ochre text-white px-5 py-2 text-sm font-medium tracking-wide text-center hover:bg-ochre-dark transition-colors" style="border-radius: var(--radius-lg);">Get Quote</a>
+      </nav>
+    </div>
+  </header>
+  <!-- @nav:end 导航组件，不需要的页面则不要复制此段 -->
+
+  <main class="max-w-7xl mx-auto">
+    <!-- @main-content:start -->
+
+    <!-- Breadcrumb -->
+    <nav id="breadcrumb" class="px-6 pt-6 pb-4" aria-label="Breadcrumb">
+      <ol class="flex items-center gap-2 text-xs text-on-surface-variant tracking-wide">
+        <li><a href="home.html" class="hover:text-on-surface transition-colors">Home</a></li>
+        <li><i data-lucide="chevron-right" class="w-3 h-3 inline-block opacity-50"></i></li>
+        <li><a href="products.html" class="hover:text-on-surface transition-colors">Collections</a></li>
+        <li><i data-lucide="chevron-right" class="w-3 h-3 inline-block opacity-50"></i></li>
+        <li class="text-on-surface font-medium">Classic Navy Polo</li>
+      </ol>
+    </nav>
+
+    <!-- Product Hero: Two-column layout -->
+    <section id="product-hero" class="px-6 pb-12">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-10">
+
+        <!-- Left column (60%): Images -->
+        <div class="md:col-span-3">
+          <!-- Main product image -->
+          <div id="main-image-wrapper" class="relative group overflow-hidden bg-surface-container" style="aspect-ratio:3/4;">
+            <img id="main-product-image" src="https://images.unsplash.com/photo-1625910513413-5fc421e0a0d7?w=800&h=1067&fit=crop" alt="Classic Navy Polo - 正面展示男士针织Polo衫" data-category="服饰时尚" class="w-full h-full object-cover transition-transform duration-300">
+            <!-- Zoom icon overlay on hover -->
+            <div id="zoom-overlay" class="absolute inset-0 bg-on-surface/0 group-hover:bg-on-surface/5 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+              <i data-lucide="zoom-in" class="w-8 h-8 text-on-surface/60"></i>
+            </div>
+          </div>
+          <!-- Thumbnail images -->
+          <div id="thumbnail-list" class="flex gap-3 mt-4">
+            <!-- 缩略图1 - 正面 -->
+            <button id="thumb-1" class="w-20 h-24 overflow-hidden border-2 border-ochre transition-all duration-200 hover:opacity-80 flex-shrink-0" data-src="https://images.unsplash.com/photo-1625910513413-5fc421e0a0d7?w=800&h=1067&fit=crop">
+              <img src="https://images.unsplash.com/photo-1625910513413-5fc421e0a0d7?w=160&h=200&fit=crop" alt="Classic Navy Polo 正面" data-category="服饰时尚" class="w-full h-full object-cover">
+            </button>
+            <!-- 缩略图2 - 侧面 -->
+            <button id="thumb-2" class="w-20 h-24 overflow-hidden border-2 border-outline-variant/30 transition-all duration-200 hover:opacity-80 flex-shrink-0" data-src="https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&h=1067&fit=crop">
+              <img src="https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=160&h=200&fit=crop" alt="Classic Navy Polo 侧面" data-category="服饰时尚" class="w-full h-full object-cover">
+            </button>
+            <!-- 缩略图3 - 细节 -->
+            <button id="thumb-3" class="w-20 h-24 overflow-hidden border-2 border-outline-variant/30 transition-all duration-200 hover:opacity-80 flex-shrink-0" data-src="https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=800&h=1067&fit=crop">
+              <img src="https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=160&h=200&fit=crop" alt="Classic Navy Polo 领口细节" data-category="服饰时尚" class="w-full h-full object-cover">
+            </button>
+          </div>
+        </div>
+
+        <!-- Right column (40%): Product info -->
+        <div class="md:col-span-2 flex flex-col gap-6">
+          <!-- Category label -->
+          <span class="text-xs font-semibold text-ochre tracking-widest uppercase">Polos</span>
+
+          <!-- Product name -->
+          <h1 class="font-serif text-3xl md:text-4xl font-semibold tracking-wide text-on-surface leading-tight">Classic Navy Polo</h1>
+
+          <!-- Short description -->
+          <p class="text-sm text-on-surface-variant leading-relaxed">A timeless essential crafted from premium cotton pique. Designed for the modern man who values comfort without compromising elegance — perfect for corporate uniforms, hospitality, and retail collections.</p>
+
+          <!-- Price block -->
+          <div id="price-block">
+            <p class="text-2xl font-semibold text-on-surface">From $4.20<span class="text-base font-normal text-on-surface-variant">/unit</span></p>
+            <p class="text-xs text-on-surface-variant tracking-wide mt-1 uppercase">Wholesale pricing</p>
+          </div>
+
+          <!-- Bulk Pricing Table -->
+          <div id="bulk-pricing" class="bg-surface-container rounded-md overflow-hidden">
+            <div class="grid grid-cols-2 px-4 py-2.5 bg-surface-container-high text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+              <span>Quantity</span>
+              <span>Unit Price</span>
+            </div>
+            <!-- 阶梯价格1 - 300-499 -->
+            <div class="grid grid-cols-2 px-4 py-3 text-sm border-t border-outline-variant/20">
+              <span class="text-on-surface">300–499 pcs</span>
+              <span class="font-medium text-on-surface">$4.20</span>
+            </div>
+            <!-- 阶梯价格2 - 500-999 -->
+            <div class="grid grid-cols-2 px-4 py-3 text-sm border-t border-outline-variant/20">
+              <span class="text-on-surface">500–999 pcs</span>
+              <span class="font-medium text-on-surface">$3.80</span>
+            </div>
+            <!-- 阶梯价格3 - 1000+ Best Value -->
+            <div id="best-value-tier" class="grid grid-cols-2 px-4 py-3 text-sm border-t border-outline-variant/20 border-l-3 border-l-ochre bg-ochre/5">
+              <span class="text-on-surface flex items-center gap-2">1000+ pcs <span class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold bg-ochre/15 text-ochre tracking-wide uppercase" style="border-radius:var(--radius-sm);">Best Value</span></span>
+              <span class="font-semibold text-ochre-dark">$3.50</span>
+            </div>
+          </div>
+
+          <!-- MOQ & Lead Time cards -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex items-center gap-3 bg-surface-container px-4 py-3" style="border-radius:var(--radius-lg);">
+              <i data-lucide="package" class="w-5 h-5 text-ochre flex-shrink-0"></i>
+              <div>
+                <p class="text-xs text-on-surface-variant">Min. Order</p>
+                <p class="text-sm font-semibold text-on-surface">300 pcs</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 bg-surface-container px-4 py-3" style="border-radius:var(--radius-lg);">
+              <i data-lucide="clock" class="w-5 h-5 text-ochre flex-shrink-0"></i>
+              <div>
+                <p class="text-xs text-on-surface-variant">Lead Time</p>
+                <p class="text-sm font-semibold text-on-surface">25–30 days</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Available Colors -->
+          <div id="color-options">
+            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-3">Available Colors</p>
+            <div class="flex items-center gap-3">
+              <!-- 颜色1 - Navy -->
+              <button id="color-navy" class="w-8 h-8 border-2 border-ochre bg-swatch-navy transition-all duration-200 hover:scale-110" style="border-radius:var(--radius-full);" aria-label="Navy" title="Navy"></button>
+              <!-- 颜色2 - White -->
+              <button id="color-white" class="w-8 h-8 border-2 border-outline-variant bg-swatch-white transition-all duration-200 hover:scale-110" style="border-radius:var(--radius-full);" aria-label="White" title="White"></button>
+              <!-- 颜色3 - Black -->
+              <button id="color-black" class="w-8 h-8 border-2 border-outline-variant transition-all duration-200 hover:scale-110" style="background-color:#1a1a1a;border-radius:var(--radius-full);" aria-label="Black" title="Black"></button>
+              <!-- 颜色4 - Brown -->
+              <button id="color-brown" class="w-8 h-8 border-2 border-outline-variant transition-all duration-200 hover:scale-110" style="background-color:#6b4423;border-radius:var(--radius-full);" aria-label="Brown" title="Brown"></button>
+            </div>
+          </div>
+
+          <!-- Available Sizes -->
+          <div id="size-options">
+            <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-3">Available Sizes</p>
+            <div id="size-buttons" class="flex items-center gap-2 flex-wrap">
+              <!-- 尺码S -->
+              <div class="relative" style="display:inline-block;">
+                <button id="size-s" class="size-btn px-4 py-2 bg-surface-container text-sm font-medium text-on-surface hover:bg-surface-container-high transition-colors" style="border-radius:var(--radius-lg);" data-chest="96cm" data-length="68cm" data-sleeve="22cm">S</button>
+              </div>
+              <!-- 尺码M -->
+              <div class="relative" style="display:inline-block;">
+                <button id="size-m" class="size-btn px-4 py-2 bg-surface-container text-sm font-medium text-on-surface hover:bg-surface-container-high transition-colors" style="border-radius:var(--radius-lg);" data-chest="100cm" data-length="70cm" data-sleeve="23cm">M</button>
+              </div>
+              <!-- 尺码L -->
+              <div class="relative" style="display:inline-block;">
+                <button id="size-l" class="size-btn px-4 py-2 bg-surface-container text-sm font-medium text-on-surface hover:bg-surface-container-high transition-colors" style="border-radius:var(--radius-lg);" data-chest="104cm" data-length="72cm" data-sleeve="24cm">L</button>
+              </div>
+              <!-- 尺码XL -->
+              <div class="relative" style="display:inline-block;">
+                <button id="size-xl" class="size-btn px-4 py-2 bg-surface-container text-sm font-medium text-on-surface hover:bg-surface-container-high transition-colors" style="border-radius:var(--radius-lg);" data-chest="108cm" data-length="74cm" data-sleeve="25cm">XL</button>
+              </div>
+              <!-- 尺码XXL -->
+              <div class="relative" style="display:inline-block;">
+                <button id="size-xxl" class="size-btn px-4 py-2 bg-surface-container text-sm font-medium text-on-surface hover:bg-surface-container-high transition-colors" style="border-radius:var(--radius-lg);" data-chest="112cm" data-length="76cm" data-sleeve="26cm">XXL</button>
+              </div>
+            </div>
+            <!-- Size tooltip -->
+            <div id="size-tooltip" class="absolute z-50 hidden bg-on-surface text-white text-xs px-3 py-2 shadow-float pointer-events-none" style="border-radius:var(--radius-lg);">
+              <div id="tooltip-content"></div>
+              <div class="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-on-surface"></div>
+            </div>
+          </div>
+
+          <!-- CTA Buttons -->
+          <div class="flex flex-col gap-3 mt-2">
+            <button id="btn-request-quote" class="w-full bg-ochre text-white px-6 py-3 text-sm font-semibold tracking-wide hover:bg-ochre-dark active:scale-[0.98] transition-all" style="border-radius:var(--radius-lg);">Request Quote</button>
+            <button id="btn-download-spec" class="w-full bg-transparent text-on-surface border border-outline-variant/30 px-6 py-3 text-sm font-medium tracking-wide hover:bg-surface-container active:scale-[0.98] transition-all" style="border-radius:var(--radius-lg);">
+              <span class="inline-flex items-center gap-2"><i data-lucide="download" class="w-4 h-4"></i>Download Spec Sheet</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Divider -->
+    <div class="px-6"><div class="border-t border-outline-variant/20"></div></div>
+
+    <!-- Product Details Tabs -->
+    <section id="product-details-tabs" class="px-6 py-10">
+      <!-- Tab headers -->
+      <div id="tab-headers" class="flex gap-0 border-b border-outline-variant/30 mb-6">
+        <button id="tab-specifications" class="tab-btn px-6 py-3 text-sm font-semibold tracking-wide transition-colors text-on-surface border-b-2 border-ochre" data-tab="specifications">Specifications</button>
+        <button id="tab-care" class="tab-btn px-6 py-3 text-sm font-semibold tracking-wide transition-colors text-on-surface-variant border-b-2 border-transparent hover:text-on-surface" data-tab="care">Care Instructions</button>
+      </div>
+
+      <!-- Tab content: Specifications (default active) -->
+      <div id="panel-specifications" class="tab-panel">
+        <div class="bg-surface-container overflow-hidden" style="border-radius:var(--radius-lg);">
+          <!-- 规格行1 - Material -->
+          <div class="grid grid-cols-3 px-5 py-4 border-b border-outline-variant/20">
+            <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">Material</span>
+            <span class="col-span-2 text-sm text-on-surface">100% Cotton Pique, 220gsm</span>
+          </div>
+          <!-- 规格行2 - Fit -->
+          <div class="grid grid-cols-3 px-5 py-4 border-b border-outline-variant/20 bg-surface-container/50">
+            <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">Fit</span>
+            <span class="col-span-2 text-sm text-on-surface">Regular</span>
+          </div>
+          <!-- 规格行3 - Collar -->
+          <div class="grid grid-cols-3 px-5 py-4 border-b border-outline-variant/20">
+            <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">Collar</span>
+            <span class="col-span-2 text-sm text-on-surface">Flat Knit Collar</span>
+          </div>
+          <!-- 规格行4 - Placket -->
+          <div class="grid grid-cols-3 px-5 py-4 border-b border-outline-variant/20 bg-surface-container/50">
+            <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">Placket</span>
+            <span class="col-span-2 text-sm text-on-surface">3-Button</span>
+          </div>
+          <!-- 规格行5 - Origin -->
+          <div class="grid grid-cols-3 px-5 py-4">
+            <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">Origin</span>
+            <span class="col-span-2 text-sm text-on-surface">Guangdong, China</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab content: Care Instructions -->
+      <div id="panel-care" class="tab-panel hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- 洗护说明1 - Machine wash -->
+          <div class="flex items-start gap-4 bg-surface-container px-5 py-4" style="border-radius:var(--radius-lg);">
+            <i data-lucide="washing-machine" class="w-5 h-5 text-ochre flex-shrink-0 mt-0.5"></i>
+            <div>
+              <p class="text-sm font-medium text-on-surface">Machine Wash Cold</p>
+              <p class="text-xs text-on-surface-variant mt-1">Wash at 30°C or below with similar colors</p>
+            </div>
+          </div>
+          <!-- 洗护说明2 - Tumble dry -->
+          <div class="flex items-start gap-4 bg-surface-container px-5 py-4" style="border-radius:var(--radius-lg);">
+            <i data-lucide="wind" class="w-5 h-5 text-ochre flex-shrink-0 mt-0.5"></i>
+            <div>
+              <p class="text-sm font-medium text-on-surface">Tumble Dry Low</p>
+              <p class="text-xs text-on-surface-variant mt-1">Use low heat setting to preserve fabric quality</p>
+            </div>
+          </div>
+          <!-- 洗护说明3 - Do not bleach -->
+          <div class="flex items-start gap-4 bg-surface-container px-5 py-4" style="border-radius:var(--radius-lg);">
+            <i data-lucide="ban" class="w-5 h-5 text-ochre flex-shrink-0 mt-0.5"></i>
+            <div>
+              <p class="text-sm font-medium text-on-surface">Do Not Bleach</p>
+              <p class="text-xs text-on-surface-variant mt-1">Avoid chlorine and oxygen bleach agents</p>
+            </div>
+          </div>
+          <!-- 洗护说明4 - Iron low -->
+          <div class="flex items-start gap-4 bg-surface-container px-5 py-4" style="border-radius:var(--radius-lg);">
+            <i data-lucide="thermometer" class="w-5 h-5 text-ochre flex-shrink-0 mt-0.5"></i>
+            <div>
+              <p class="text-sm font-medium text-on-surface">Iron Low Heat</p>
+              <p class="text-xs text-on-surface-variant mt-1">Maximum sole plate temperature of 110°C</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Divider -->
+    <div class="px-6"><div class="border-t border-outline-variant/20"></div></div>
+
+    <!-- Inline Inquiry Form -->
+    <section id="quick-inquiry" class="px-6 py-10">
+      <div class="max-w-2xl">
+        <h2 class="font-serif text-2xl font-semibold tracking-wide text-on-surface mb-2">Quick Inquiry</h2>
+        <p class="text-sm text-on-surface-variant mb-8">Have questions about pricing, samples, or customization? Fill out the form below and our team will respond within 24 hours.</p>
+        <form id="inquiry-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- 姓名 -->
+          <div>
+            <label for="inquiry-name" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">Name</label>
+            <input id="inquiry-name" type="text" class="w-full bg-surface-container border-none px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors" style="border-radius:var(--radius-md);" placeholder="Your full name">
+          </div>
+          <!-- 邮箱 -->
+          <div>
+            <label for="inquiry-email" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">Email</label>
+            <input id="inquiry-email" type="email" class="w-full bg-surface-container border-none px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors" style="border-radius:var(--radius-md);" placeholder="your@company.com">
+          </div>
+          <!-- 公司 -->
+          <div>
+            <label for="inquiry-company" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">Company</label>
+            <input id="inquiry-company" type="text" class="w-full bg-surface-container border-none px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors" style="border-radius:var(--radius-md);" placeholder="Company name">
+          </div>
+          <!-- 数量 -->
+          <div>
+            <label for="inquiry-quantity" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">Quantity</label>
+            <input id="inquiry-quantity" type="number" class="w-full bg-surface-container border-none px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors" style="border-radius:var(--radius-md);" placeholder="Estimated quantity" min="300">
+          </div>
+          <!-- 留言 -->
+          <div class="sm:col-span-2">
+            <label for="inquiry-message" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-1.5">Message</label>
+            <textarea id="inquiry-message" rows="4" class="w-full bg-surface-container border-none px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-ochre/30 transition-colors resize-none" style="border-radius:var(--radius-md);" placeholder="Tell us about your requirements — colors, sizes, customization, timeline…"></textarea>
+          </div>
+          <!-- 提交按钮 -->
+          <div class="sm:col-span-2">
+            <button id="btn-inquiry-submit" type="submit" class="bg-ochre text-white px-8 py-3 text-sm font-semibold tracking-wide hover:bg-ochre-dark active:scale-[0.98] transition-all" style="border-radius:var(--radius-lg);">Submit Inquiry</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Divider -->
+    <div class="px-6"><div class="border-t border-outline-variant/20"></div></div>
+
+    <!-- Related Products -->
+    <section id="related-products" class="px-6 py-10">
+      <h2 class="font-serif text-2xl font-semibold tracking-wide text-on-surface mb-8">You May Also Like</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <!-- 相关产品1 - White Pique Polo -->
+        <a href="product-detail.html?id=2" class="group block bg-surface shadow-card overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-float" style="border-radius:var(--radius-lg);">
+          <div class="overflow-hidden" style="aspect-ratio:3/4;">
+            <img src="https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=400&h=533&fit=crop" alt="White Pique Polo - 白色珠地布Polo衫" data-category="服饰时尚" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]">
+          </div>
+          <div class="p-4">
+            <p class="text-xs text-ochre tracking-widest uppercase font-semibold mb-1">Polos</p>
+            <h3 class="font-serif text-base font-semibold text-on-surface mb-1">White Pique Polo</h3>
+            <p class="text-sm text-on-surface-variant">From $4.50/unit</p>
+          </div>
+        </a>
+        <!-- 相关产品2 - Essential Black Tee -->
+        <a href="product-detail.html?id=3" class="group block bg-surface shadow-card overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-float" style="border-radius:var(--radius-lg);">
+          <div class="overflow-hidden" style="aspect-ratio:3/4;">
+            <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=533&fit=crop" alt="Essential Black Tee - 黑色基础款T恤" data-category="服饰时尚" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]">
+          </div>
+          <div class="p-4">
+            <p class="text-xs text-ochre tracking-widest uppercase font-semibold mb-1">Tees</p>
+            <h3 class="font-serif text-base font-semibold text-on-surface mb-1">Essential Black Tee</h3>
+            <p class="text-sm text-on-surface-variant">From $3.20/unit</p>
+          </div>
+        </a>
+        <!-- 相关产品3 - Heather Grey Henley -->
+        <a href="product-detail.html?id=4" class="group block bg-surface shadow-card overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-float" style="border-radius:var(--radius-lg);">
+          <div class="overflow-hidden" style="aspect-ratio:3/4;">
+            <img src="https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400&h=533&fit=crop" alt="Heather Grey Henley - 灰色亨利衫" data-category="服饰时尚" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]">
+          </div>
+          <div class="p-4">
+            <p class="text-xs text-ochre tracking-widest uppercase font-semibold mb-1">Knits</p>
+            <h3 class="font-serif text-base font-semibold text-on-surface mb-1">Heather Grey Henley</h3>
+            <p class="text-sm text-on-surface-variant">From $5.10/unit</p>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- @main-content:end -->
+  </main>
+
+  <!-- Size Chart Modal -->
+  <div id="size-chart-modal" class="fixed inset-0 bg-on-surface/50 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-surface max-w-lg w-full max-h-[90vh] overflow-y-auto p-8" style="border-radius:var(--radius-xl);box-shadow:var(--shadow-dialog);">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="font-serif text-xl font-semibold text-on-surface tracking-wide">Size Chart</h3>
+        <button id="close-size-modal" class="text-on-surface-variant hover:text-on-surface transition-colors" aria-label="Close">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="overflow-hidden" style="border-radius:var(--radius-lg);">
+        <div class="bg-surface-container">
+          <!-- 表头 -->
+          <div class="grid grid-cols-5 px-4 py-3 bg-surface-container-high text-xs font-semibold text-on-surface-variant uppercase tracking-widest">
+            <span>Size</span><span>Chest</span><span>Waist</span><span>Length</span><span>Sleeve</span>
+          </div>
+          <!-- 尺码行 - S -->
+          <div class="grid grid-cols-5 px-4 py-3 text-sm border-t border-outline-variant/20">
+            <span class="font-semibold text-on-surface">S</span><span class="text-on-surface">96cm</span><span class="text-on-surface">88cm</span><span class="text-on-surface">68cm</span><span class="text-on-surface">22cm</span>
+          </div>
+          <!-- 尺码行 - M -->
+          <div class="grid grid-cols-5 px-4 py-3 text-sm border-t border-outline-variant/20 bg-surface-container/50">
+            <span class="font-semibold text-on-surface">M</span><span class="text-on-surface">100cm</span><span class="text-on-surface">92cm</span><span class="text-on-surface">70cm</span><span class="text-on-surface">23cm</span>
+          </div>
+          <!-- 尺码行 - L -->
+          <div class="grid grid-cols-5 px-4 py-3 text-sm border-t border-outline-variant/20">
+            <span class="font-semibold text-on-surface">L</span><span class="text-on-surface">104cm</span><span class="text-on-surface">96cm</span><span class="text-on-surface">72cm</span><span class="text-on-surface">24cm</span>
+          </div>
+          <!-- 尺码行 - XL -->
+          <div class="grid grid-cols-5 px-4 py-3 text-sm border-t border-outline-variant/20 bg-surface-container/50">
+            <span class="font-semibold text-on-surface">XL</span><span class="text-on-surface">108cm</span><span class="text-on-surface">100cm</span><span class="text-on-surface">74cm</span><span class="text-on-surface">25cm</span>
+          </div>
+          <!-- 尺码行 - XXL -->
+          <div class="grid grid-cols-5 px-4 py-3 text-sm border-t border-outline-variant/20">
+            <span class="font-semibold text-on-surface">XXL</span><span class="text-on-surface">112cm</span><span class="text-on-surface">104cm</span><span class="text-on-surface">76cm</span><span class="text-on-surface">26cm</span>
+          </div>
+        </div>
+      </div>
+      <p class="text-xs text-on-surface-variant mt-4">All measurements are garment measurements. Allow ±1cm variance due to production process.</p>
+    </div>
+  </div>
+
+  <script>
+    // Mobile menu toggle
+    $('#mobile-menu-btn').on('click', function() {
+      $('#mobile-menu').toggleClass('hidden');
+    });
+    // Set active nav link based on current page
+    $(function() {
+      const page = window.location.pathname.split('/').pop() || 'home.html';
+      $('header nav a, #mobile-menu nav a').each(function() {
+        const href = $(this).attr('href');
+        if (href === page || (page === '' && href === 'home.html')) {
+          $(this).removeClass('text-on-surface-variant').addClass('text-on-surface');
+          if ($(this).closest('#mobile-menu').length === 0 && !$(this).hasClass('bg-ochre')) {
+            $(this).css('border-bottom', '2px solid var(--color-ochre)').css('padding-bottom', '2px');
+          }
+        }
+      });
+    });
+  </script>
+
+  <!-- Page-specific interactions -->
+  <script>
+  $(function() {
+
+    // === Thumbnail image switching ===
+    $('#thumbnail-list').on('click', 'button', function() {
+      const newSrc = $(this).data('src');
+      $('#main-product-image').attr('src', newSrc);
+      // Update active thumbnail border
+      $('#thumbnail-list button').removeClass('border-ochre').addClass('border-outline-variant/30');
+      $(this).removeClass('border-outline-variant/30').addClass('border-ochre');
+    });
+
+    // === Color swatch selection ===
+    $('#color-options').on('click', 'button', function() {
+      $('#color-options button').removeClass('border-ochre').addClass('border-outline-variant');
+      $(this).removeClass('border-outline-variant').addClass('border-ochre');
+    });
+
+    // === Size button tooltip on hover ===
+    $('#size-buttons').on('mouseenter', '.size-btn', function() {
+      const chest = $(this).data('chest');
+      const length = $(this).data('length');
+      const sleeve = $(this).data('sleeve');
+      const label = $(this).text().trim();
+      $('#tooltip-content').html(
+        '<div class="font-semibold mb-1">Size ' + label + '</div>' +
+        '<div>Chest: ' + chest + '</div>' +
+        '<div>Length: ' + length + '</div>' +
+        '<div>Sleeve: ' + sleeve + '</div>'
+      );
+      const btnOffset = $(this).offset();
+      const btnWidth = $(this).outerWidth();
+      const tooltipW = $('#size-tooltip').outerWidth();
+      $('#size-tooltip').css({
+        top: btnOffset.top - $('#size-tooltip').outerHeight() - 8,
+        left: btnOffset.left + (btnWidth / 2) - (tooltipW / 2)
+      }).removeClass('hidden');
+    }).on('mouseleave', '.size-btn', function() {
+      $('#size-tooltip').addClass('hidden');
+    });
+
+    // === Size button click → open size chart modal ===
+    $('#size-buttons').on('click', '.size-btn', function() {
+      $('#size-chart-modal').removeClass('hidden');
+      $('body').css('overflow', 'hidden');
+    });
+
+    // === Close size chart modal ===
+    $('#close-size-modal').on('click', function() {
+      $('#size-chart-modal').addClass('hidden');
+      $('body').css('overflow', '');
+    });
+    // Close modal on backdrop click
+    $('#size-chart-modal').on('click', function(e) {
+      if ($(e.target).is('#size-chart-modal')) {
+        $('#size-chart-modal').addClass('hidden');
+        $('body').css('overflow', '');
+      }
+    });
+
+    // === Tab switching ===
+    $('#tab-headers').on('click', '.tab-btn', function() {
+      const tabId = $(this).data('tab');
+      // Update tab header styles
+      $('.tab-btn').removeClass('text-on-surface border-ochre').addClass('text-on-surface-variant border-transparent');
+      $(this).removeClass('text-on-surface-variant border-transparent').addClass('text-on-surface border-ochre');
+      // Show/hide panels
+      $('.tab-panel').addClass('hidden');
+      $('#panel-' + tabId).removeClass('hidden');
+    });
+
+    // === Request Quote button → scroll to inquiry form ===
+    $('#btn-request-quote').on('click', function() {
+      $('html, body').animate({
+        scrollTop: $('#quick-inquiry').offset().top - 80
+      }, 400, function() {
+        $('#inquiry-name').focus();
+      });
+    });
+
+    // === Download Spec Sheet button ===
+    // 后续应实现：生成包含完整规格的PDF文件并触发下载
+    // 1. 调用后端API生成产品规格PDF（包含产品名称、材质、尺码表、洗护说明等）
+    // 2. 或使用前端库（如jsPDF）动态生成PDF
+    // 3. 触发浏览器下载
+    $('#btn-download-spec').on('click', function() {
+      console.log('Download spec sheet: should generate and download PDF for Classic Navy Polo');
+    });
+
+    // === Inquiry form submit ===
+    // 后续应实现：表单验证和提交
+    // 1. 验证必填字段（Name、Email、Quantity）
+    // 2. 验证Email格式
+    // 3. 验证Quantity ≥ MOQ (300)
+    // 4. 发送到后端API或邮件服务
+    // 5. 显示成功提示，清空表单
+    $('#inquiry-form').on('submit', function(e) {
+      e.preventDefault();
+      console.log('Inquiry submitted: should validate and send to backend');
+      // Simple visual feedback
+      const $btn = $('#btn-inquiry-submit');
+      const originalText = $btn.text();
+      $btn.text('Submitted!').addClass('bg-success');
+      setTimeout(function() {
+        $btn.text(originalText).removeClass('bg-success');
+      }, 2000);
+    });
+
+  });
+  </script>
+  <script>lucide.createIcons();</script>
+</body>
+
+</html>

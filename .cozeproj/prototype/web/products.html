@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Fonts: Playfair Display (serif headings) + Noto Serif SC (CN headings) + Inter (body) -->
+  <link href="https://fonts.googleapis.cn/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/jquery/jquery-3.7.1.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/lucide/lucide-1.11.0.min.js"></script>
+  <script src="https://lf-code-agent.coze.cn/obj/x-ai-cn/cdn/tailwindcss/tailwindcss-browser-4.2.4.min.js"></script>
+
+  <style type="text/tailwindcss">
+    @theme {
+      /* === 品牌色 === */
+      --color-primary:              #2C2C2C;
+      --color-primary-container:    #3D3D3D;
+      --color-on-primary:           #F5F0EB;
+      /* === 背景 / 表面 === */
+      --color-background:                 #F5F0EB;
+      --color-surface-container-lowest:   #FFFFFF;
+      --color-surface:                    #FFFFFF;
+      --color-surface-container:          #EDEBE8;
+      --color-surface-container-high:     #E5E2DD;
+      --color-surface-container-highest:  #DDD9D4;
+      /* === 文字 === */
+      --color-on-surface:           #2C2C2C;
+      --color-on-surface-variant:   #7A756E;
+      /* === 功能色 === */
+      --color-success:  #22c55e;
+      --color-error:    #ef4444;
+      --color-warning:  #f59e0b;
+      /* === 品牌点缀色 === */
+      --color-ochre:       #B8956A;
+      --color-ochre-light: #D4B896;
+      --color-ochre-dark:  #96754E;
+      /* === 边框 === */
+      --color-outline:          #D9D4CE;
+      --color-outline-variant:  #E5E2DD;
+      /* === 圆角 (max 6px per DESIGN.md) === */
+      --radius-sm:   0.125rem;
+      --radius-md:   0.25rem;
+      --radius-lg:   0.375rem;
+      --radius-xl:   0.5rem;
+      --radius-2xl:  0.75rem;
+      --radius-full: 9999px;
+      /* === 阴影 (max 2px blur per DESIGN.md) === */
+      --shadow-card:   0 1px 2px rgba(0,0,0,0.08);
+      --shadow-float:  0 2px 2px rgba(0,0,0,0.1);
+      --shadow-dialog: 0 2px 2px rgba(0,0,0,0.12);
+      /* === 字体 === */
+      --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --font-serif: "Playfair Display", "Noto Serif SC", ui-serif, Georgia, serif;
+    }
+  </style>
+
+  <style>
+    /* Product card hover effect */
+    .product-card {
+      transition: transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.25s cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+    .product-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+    /* Request Quote arrow shift on hover */
+    .quote-link .quote-arrow {
+      transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+    .quote-link:hover .quote-arrow {
+      transform: translateX(3px);
+    }
+  </style>
+
+  <!-- 图片兜底 -->
+  <script>
+    document.addEventListener('error', function (e) {
+      const img = e.target;
+      if (img.tagName !== 'IMG' || img.dataset.fallback) return;
+      img.dataset.fallback = '1';
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const cat = img.getAttribute('data-category') || '其他';
+      const alt = img.getAttribute('alt') || '';
+      const label = esc(alt.length > 8 ? alt.slice(0, 8) + '…' : alt);
+      const icons = { '人物': '👤', '自然风景': '🏞', '动物': '🐾', '建筑城市': '🏙', '运动体育': '⚽', '交通工具': '🚗', '食物': '🍽', '服饰时尚': '👗', '商业科技': '💼', '游戏娱乐': '🎮', '艺术': '🎨', '其他': '🖼' };
+      const icon = icons[cat] || '🖼';
+      const w = img.width || 400, h = img.height || 300;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="45%" text-anchor="middle" font-size="${Math.min(w, h) * 0.18}" dominant-baseline="central">${icon}</text><text x="50%" y="68%" text-anchor="middle" font-size="${Math.min(w, h) * 0.07}" fill="%239ca3af" font-family="system-ui,sans-serif" dominant-baseline="central">${label}</text></svg>`;
+      img.src = 'data:image/svg+xml,' + svg;
+    }, true);
+  </script>
+</head>
+
+<body class="bg-background text-on-surface font-sans">
+
+  <!-- @nav:start -->
+  <header class="bg-surface/95 backdrop-blur-sm sticky top-0 z-40 border-b border-outline-variant/30">
+    <div class="max-w-7xl mx-auto h-16 flex items-center justify-between px-6">
+      <!-- Logo -->
+      <a href="home.html" class="flex items-center gap-3">
+        <span class="font-serif text-xl font-semibold tracking-wide text-on-surface">CHENGFENG</span>
+        <span class="text-xs text-on-surface-variant tracking-widest uppercase">International</span>
+      </a>
+      <!-- Desktop Nav -->
+      <nav class="hidden md:flex items-center gap-8">
+        <a href="home.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">Home</a>
+        <a href="products.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide" aria-current="page" style="border-bottom: 2px solid var(--color-ochre); padding-bottom: 2px; color: var(--color-on-surface);">Collections</a>
+        <a href="about.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">About</a>
+        <a href="inquiry.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors tracking-wide">Inquiry</a>
+      </nav>
+      <!-- CTA + Mobile -->
+      <div class="flex items-center gap-4">
+        <a href="inquiry.html" class="hidden md:inline-flex bg-ochre text-white px-5 py-2 text-sm font-medium tracking-wide hover:bg-ochre-dark transition-colors" style="border-radius: var(--radius-lg);">Get Quote</a>
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-btn" class="md:hidden text-on-surface" aria-label="Menu">
+          <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+      </div>
+    </div>
+    <!-- Mobile Nav -->
+    <div id="mobile-menu" class="md:hidden hidden border-t border-outline-variant/30 bg-surface">
+      <nav class="flex flex-col px-6 py-4 gap-4">
+        <a href="home.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Home</a>
+        <a href="products.html" class="text-sm font-medium text-on-surface hover:text-on-surface transition-colors" aria-current="page">Collections</a>
+        <a href="about.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">About</a>
+        <a href="inquiry.html" class="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Inquiry</a>
+        <a href="inquiry.html" class="bg-ochre text-white px-5 py-2 text-sm font-medium tracking-wide text-center hover:bg-ochre-dark transition-colors" style="border-radius: var(--radius-lg);">Get Quote</a>
+      </nav>
+    </div>
+  </header>
+  <!-- @nav:end -->
+
+  <main class="max-w-7xl mx-auto">
+
+    <!-- @main-content:start -->
+
+    <!-- Page Header -->
+    <section class="px-6 pt-12 pb-8">
+      <!-- Breadcrumb -->
+      <nav id="breadcrumb" class="mb-6" aria-label="Breadcrumb">
+        <ol class="flex items-center gap-2 text-xs text-on-surface-variant">
+          <li><a href="home.html" class="hover:text-on-surface transition-colors">Home</a></li>
+          <li><i data-lucide="chevron-right" class="w-3 h-3 inline-block"></i></li>
+          <li class="text-on-surface font-medium">Collections</li>
+        </ol>
+      </nav>
+      <h1 class="font-serif text-4xl md:text-5xl font-semibold tracking-wide text-on-surface">Our Collections</h1>
+      <p class="mt-3 text-base text-on-surface-variant max-w-xl">Premium men's knitwear for wholesale buyers</p>
+    </section>
+
+    <!-- Filter Bar -->
+    <section id="filter-bar" class="px-6 pb-8 border-b border-outline-variant/20">
+      <div class="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
+        <!-- Category Filters -->
+        <div id="category-filters" class="flex flex-wrap items-center gap-2">
+          <button id="filter-cat-all" class="filter-pill active px-4 py-1.5 text-sm font-medium tracking-wide transition-colors" style="border-radius: var(--radius-lg);" data-category="all">All</button>
+          <button id="filter-cat-polos" class="filter-pill px-4 py-1.5 text-sm font-medium tracking-wide transition-colors" style="border-radius: var(--radius-lg);" data-category="polos">Polos</button>
+          <button id="filter-cat-tshirts" class="filter-pill px-4 py-1.5 text-sm font-medium tracking-wide transition-colors" style="border-radius: var(--radius-lg);" data-category="tshirts">T-Shirts</button>
+          <button id="filter-cat-striped" class="filter-pill px-4 py-1.5 text-sm font-medium tracking-wide transition-colors" style="border-radius: var(--radius-lg);" data-category="striped">Striped Tees</button>
+          <button id="filter-cat-knitwear" class="filter-pill px-4 py-1.5 text-sm font-medium tracking-wide transition-colors" style="border-radius: var(--radius-lg);" data-category="knitwear">Knitwear</button>
+        </div>
+        <!-- MOQ Filters -->
+        <div id="moq-filters" class="flex flex-wrap items-center gap-2 lg:border-l lg:border-outline-variant/20 lg:pl-6">
+          <button id="filter-moq-any" class="filter-pill active px-4 py-1.5 text-sm font-medium tracking-wide transition-colors" style="border-radius: var(--radius-lg);" data-moq="any">Any MOQ</button>
+          <button id="filter-moq-under500" class="filter-pill px-4 py-1.5 text-sm font-medium tracking-wide transition-colors" style="border-radius: var(--radius-lg);" data-moq="under500">Under 500</button>
+          <button id="filter-moq-500-1000" class="filter-pill px-4 py-1.5 text-sm font-medium tracking-wide transition-colors" style="border-radius: var(--radius-lg);" data-moq="500-1000">500-1000</button>
+          <button id="filter-moq-1000plus" class="filter-pill px-4 py-1.5 text-sm font-medium tracking-wide transition-colors" style="border-radius: var(--radius-lg);" data-moq="1000plus">1000+</button>
+        </div>
+        <!-- Search -->
+        <div class="lg:ml-auto relative">
+          <i data-lucide="search" class="w-4 h-4 text-on-surface-variant absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+          <input id="search-input" type="text" placeholder="Search products…" class="w-full lg:w-56 bg-surface-container border-none pl-9 pr-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors" style="border-radius: var(--radius-md);" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Product Grid -->
+    <section id="product-grid" class="px-6 py-10">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- 列表-Product 1: Classic Navy Polo -->
+        <article id="product-1" class="product-card bg-surface shadow-card overflow-hidden" style="border-radius: var(--radius-lg);" data-category="polos" data-moq="300">
+          <a href="product-detail.html?id=1" class="block">
+            <div class="overflow-hidden" style="aspect-ratio: 3/4;">
+              <img src="https://images.unsplash.com/photo-1625910513413-5fc421e0e2f0" alt="Classic Navy Polo shirt on model" data-category="服饰时尚" class="w-full h-full object-cover" />
+            </div>
+          </a>
+          <div class="p-5">
+            <span class="text-xs uppercase tracking-widest text-ochre font-medium">Polos</span>
+            <h3 class="font-serif text-lg font-semibold text-on-surface mt-1.5">Classic Navy Polo</h3>
+            <p class="text-sm text-on-surface-variant mt-1 truncate">Timeless navy piqué polo with ribbed collar</p>
+            <div class="flex items-center gap-3 mt-3">
+              <span class="text-sm font-semibold text-on-surface">From $4.20/unit</span>
+              <span class="text-xs bg-surface-container px-2 py-0.5 text-on-surface-variant" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+            </div>
+            <a href="inquiry.html?product=classic-navy-polo" id="quote-link-1" class="quote-link inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-ochre hover:text-ochre-dark transition-colors">
+              Request Quote <i data-lucide="arrow-right" class="quote-arrow w-4 h-4"></i>
+            </a>
+          </div>
+        </article>
+
+        <!-- 列表-Product 2: Essential White Tee -->
+        <article id="product-2" class="product-card bg-surface shadow-card overflow-hidden" style="border-radius: var(--radius-lg);" data-category="tshirts" data-moq="500">
+          <a href="product-detail.html?id=2" class="block">
+            <div class="overflow-hidden" style="aspect-ratio: 3/4;">
+              <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab" alt="Essential White Tee clean product shot" data-category="服饰时尚" class="w-full h-full object-cover" />
+            </div>
+          </a>
+          <div class="p-5">
+            <span class="text-xs uppercase tracking-widest text-ochre font-medium">T-Shirts</span>
+            <h3 class="font-serif text-lg font-semibold text-on-surface mt-1.5">Essential White Tee</h3>
+            <p class="text-sm text-on-surface-variant mt-1 truncate">Clean crew-neck essential in organic cotton</p>
+            <div class="flex items-center gap-3 mt-3">
+              <span class="text-sm font-semibold text-on-surface">From $3.00/unit</span>
+              <span class="text-xs bg-surface-container px-2 py-0.5 text-on-surface-variant" style="border-radius: var(--radius-sm);">MOQ: 500</span>
+            </div>
+            <a href="inquiry.html?product=essential-white-tee" id="quote-link-2" class="quote-link inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-ochre hover:text-ochre-dark transition-colors">
+              Request Quote <i data-lucide="arrow-right" class="quote-arrow w-4 h-4"></i>
+            </a>
+          </div>
+        </article>
+
+        <!-- 列表-Product 3: Heather Grey Striped Tee -->
+        <article id="product-3" class="product-card bg-surface shadow-card overflow-hidden" style="border-radius: var(--radius-lg);" data-category="striped" data-moq="300">
+          <a href="product-detail.html?id=3" class="block">
+            <div class="overflow-hidden" style="aspect-ratio: 3/4;">
+              <img src="https://images.unsplash.com/photo-1554568218-0f1715e72254" alt="Heather Grey Striped Tee flat lay" data-category="服饰时尚" class="w-full h-full object-cover" />
+            </div>
+          </a>
+          <div class="p-5">
+            <span class="text-xs uppercase tracking-widest text-ochre font-medium">Striped Tees</span>
+            <h3 class="font-serif text-lg font-semibold text-on-surface mt-1.5">Heather Grey Striped Tee</h3>
+            <p class="text-sm text-on-surface-variant mt-1 truncate">Subtle horizontal stripes in heather grey</p>
+            <div class="flex items-center gap-3 mt-3">
+              <span class="text-sm font-semibold text-on-surface">From $3.50/unit</span>
+              <span class="text-xs bg-surface-container px-2 py-0.5 text-on-surface-variant" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+            </div>
+            <a href="inquiry.html?product=heather-grey-striped-tee" id="quote-link-3" class="quote-link inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-ochre hover:text-ochre-dark transition-colors">
+              Request Quote <i data-lucide="arrow-right" class="quote-arrow w-4 h-4"></i>
+            </a>
+          </div>
+        </article>
+
+        <!-- 列表-Product 4: Black Zip Polo -->
+        <article id="product-4" class="product-card bg-surface shadow-card overflow-hidden" style="border-radius: var(--radius-lg);" data-category="polos" data-moq="300">
+          <a href="product-detail.html?id=4" class="block">
+            <div class="overflow-hidden" style="aspect-ratio: 3/4;">
+              <img src="https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99" alt="Black Zip Polo on hanger" data-category="服饰时尚" class="w-full h-full object-cover" />
+            </div>
+          </a>
+          <div class="p-5">
+            <span class="text-xs uppercase tracking-widest text-ochre font-medium">Polos</span>
+            <h3 class="font-serif text-lg font-semibold text-on-surface mt-1.5">Black Zip Polo</h3>
+            <p class="text-sm text-on-surface-variant mt-1 truncate">Modern half-zip polo in jet black cotton</p>
+            <div class="flex items-center gap-3 mt-3">
+              <span class="text-sm font-semibold text-on-surface">From $4.50/unit</span>
+              <span class="text-xs bg-surface-container px-2 py-0.5 text-on-surface-variant" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+            </div>
+            <a href="inquiry.html?product=black-zip-polo" id="quote-link-4" class="quote-link inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-ochre hover:text-ochre-dark transition-colors">
+              Request Quote <i data-lucide="arrow-right" class="quote-arrow w-4 h-4"></i>
+            </a>
+          </div>
+        </article>
+
+        <!-- 列表-Product 5: Brown Contrast Polo -->
+        <article id="product-5" class="product-card bg-surface shadow-card overflow-hidden" style="border-radius: var(--radius-lg);" data-category="polos" data-moq="300">
+          <a href="product-detail.html?id=5" class="block">
+            <div class="overflow-hidden" style="aspect-ratio: 3/4;">
+              <img src="https://images.unsplash.com/photo-1594938298603-c8148c4dae35" alt="Brown Contrast Polo detail shot" data-category="服饰时尚" class="w-full h-full object-cover" />
+            </div>
+          </a>
+          <div class="p-5">
+            <span class="text-xs uppercase tracking-widest text-ochre font-medium">Polos</span>
+            <h3 class="font-serif text-lg font-semibold text-on-surface mt-1.5">Brown Contrast Polo</h3>
+            <p class="text-sm text-on-surface-variant mt-1 truncate">Warm brown polo with contrast collar detail</p>
+            <div class="flex items-center gap-3 mt-3">
+              <span class="text-sm font-semibold text-on-surface">From $4.30/unit</span>
+              <span class="text-xs bg-surface-container px-2 py-0.5 text-on-surface-variant" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+            </div>
+            <a href="inquiry.html?product=brown-contrast-polo" id="quote-link-5" class="quote-link inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-ochre hover:text-ochre-dark transition-colors">
+              Request Quote <i data-lucide="arrow-right" class="quote-arrow w-4 h-4"></i>
+            </a>
+          </div>
+        </article>
+
+        <!-- 列表-Product 6: Warm Brown Essential Tee -->
+        <article id="product-6" class="product-card bg-surface shadow-card overflow-hidden" style="border-radius: var(--radius-lg);" data-category="tshirts" data-moq="500">
+          <a href="product-detail.html?id=6" class="block">
+            <div class="overflow-hidden" style="aspect-ratio: 3/4;">
+              <img src="https://images.unsplash.com/photo-1576566588028-4147f3842f27" alt="Warm Brown Essential Tee folded" data-category="服饰时尚" class="w-full h-full object-cover" />
+            </div>
+          </a>
+          <div class="p-5">
+            <span class="text-xs uppercase tracking-widest text-ochre font-medium">T-Shirts</span>
+            <h3 class="font-serif text-lg font-semibold text-on-surface mt-1.5">Warm Brown Essential Tee</h3>
+            <p class="text-sm text-on-surface-variant mt-1 truncate">Versatile crew-neck tee in warm brown tone</p>
+            <div class="flex items-center gap-3 mt-3">
+              <span class="text-sm font-semibold text-on-surface">From $3.20/unit</span>
+              <span class="text-xs bg-surface-container px-2 py-0.5 text-on-surface-variant" style="border-radius: var(--radius-sm);">MOQ: 500</span>
+            </div>
+            <a href="inquiry.html?product=warm-brown-essential-tee" id="quote-link-6" class="quote-link inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-ochre hover:text-ochre-dark transition-colors">
+              Request Quote <i data-lucide="arrow-right" class="quote-arrow w-4 h-4"></i>
+            </a>
+          </div>
+        </article>
+
+        <!-- 列表-Product 7: Charcoal Striped Tee -->
+        <article id="product-7" class="product-card bg-surface shadow-card overflow-hidden" style="border-radius: var(--radius-lg);" data-category="striped" data-moq="300">
+          <a href="product-detail.html?id=7" class="block">
+            <div class="overflow-hidden" style="aspect-ratio: 3/4;">
+              <img src="https://images.unsplash.com/photo-1618354691373-d851c5c3a990" alt="Charcoal Striped Tee lifestyle" data-category="服饰时尚" class="w-full h-full object-cover" />
+            </div>
+          </a>
+          <div class="p-5">
+            <span class="text-xs uppercase tracking-widest text-ochre font-medium">Striped Tees</span>
+            <h3 class="font-serif text-lg font-semibold text-on-surface mt-1.5">Charcoal Striped Tee</h3>
+            <p class="text-sm text-on-surface-variant mt-1 truncate">Bold charcoal stripes on soft cotton base</p>
+            <div class="flex items-center gap-3 mt-3">
+              <span class="text-sm font-semibold text-on-surface">From $3.80/unit</span>
+              <span class="text-xs bg-surface-container px-2 py-0.5 text-on-surface-variant" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+            </div>
+            <a href="inquiry.html?product=charcoal-striped-tee" id="quote-link-7" class="quote-link inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-ochre hover:text-ochre-dark transition-colors">
+              Request Quote <i data-lucide="arrow-right" class="quote-arrow w-4 h-4"></i>
+            </a>
+          </div>
+        </article>
+
+        <!-- 列表-Product 8: Cable Knit Sweater -->
+        <article id="product-8" class="product-card bg-surface shadow-card overflow-hidden" style="border-radius: var(--radius-lg);" data-category="knitwear" data-moq="200">
+          <a href="product-detail.html?id=8" class="block">
+            <div class="overflow-hidden" style="aspect-ratio: 3/4;">
+              <img src="https://images.unsplash.com/photo-1434389677669-e08b4cda3a50" alt="Cable Knit Sweater close-up texture" data-category="服饰时尚" class="w-full h-full object-cover" />
+            </div>
+          </a>
+          <div class="p-5">
+            <span class="text-xs uppercase tracking-widest text-ochre font-medium">Knitwear</span>
+            <h3 class="font-serif text-lg font-semibold text-on-surface mt-1.5">Cable Knit Sweater</h3>
+            <p class="text-sm text-on-surface-variant mt-1 truncate">Classic cable knit in premium merino wool</p>
+            <div class="flex items-center gap-3 mt-3">
+              <span class="text-sm font-semibold text-on-surface">From $5.00/unit</span>
+              <span class="text-xs bg-surface-container px-2 py-0.5 text-on-surface-variant" style="border-radius: var(--radius-sm);">MOQ: 200</span>
+            </div>
+            <a href="inquiry.html?product=cable-knit-sweater" id="quote-link-8" class="quote-link inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-ochre hover:text-ochre-dark transition-colors">
+              Request Quote <i data-lucide="arrow-right" class="quote-arrow w-4 h-4"></i>
+            </a>
+          </div>
+        </article>
+
+        <!-- 列表-Product 9: Black Detail Striped Tee -->
+        <article id="product-9" class="product-card bg-surface shadow-card overflow-hidden" style="border-radius: var(--radius-lg);" data-category="striped" data-moq="300">
+          <a href="product-detail.html?id=9" class="block">
+            <div class="overflow-hidden" style="aspect-ratio: 3/4;">
+              <img src="https://images.unsplash.com/photo-1529374255404-311a2a4f1fd9" alt="Black Detail Striped Tee model" data-category="服饰时尚" class="w-full h-full object-cover" />
+            </div>
+          </a>
+          <div class="p-5">
+            <span class="text-xs uppercase tracking-widest text-ochre font-medium">Striped Tees</span>
+            <h3 class="font-serif text-lg font-semibold text-on-surface mt-1.5">Black Detail Striped Tee</h3>
+            <p class="text-sm text-on-surface-variant mt-1 truncate">Black base with fine striped detail accents</p>
+            <div class="flex items-center gap-3 mt-3">
+              <span class="text-sm font-semibold text-on-surface">From $3.60/unit</span>
+              <span class="text-xs bg-surface-container px-2 py-0.5 text-on-surface-variant" style="border-radius: var(--radius-sm);">MOQ: 300</span>
+            </div>
+            <a href="inquiry.html?product=black-detail-striped-tee" id="quote-link-9" class="quote-link inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-ochre hover:text-ochre-dark transition-colors">
+              Request Quote <i data-lucide="arrow-right" class="quote-arrow w-4 h-4"></i>
+            </a>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- Pagination -->
+    <section id="pagination" class="px-6 pb-16 pt-4">
+      <nav class="flex items-center justify-center gap-1" aria-label="Pagination">
+        <button id="page-prev" class="px-3 py-2 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors" style="border-radius: var(--radius-md);">
+          <i data-lucide="chevron-left" class="w-4 h-4 inline-block"></i> Prev
+        </button>
+        <button id="page-1" class="px-3 py-2 text-sm font-medium bg-ochre text-white transition-colors" style="border-radius: var(--radius-md);">1</button>
+        <button id="page-2" class="px-3 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors" style="border-radius: var(--radius-md);">2</button>
+        <button id="page-3" class="px-3 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors" style="border-radius: var(--radius-md);">3</button>
+        <button id="page-next" class="px-3 py-2 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors" style="border-radius: var(--radius-md);">
+          Next <i data-lucide="chevron-right" class="w-4 h-4 inline-block"></i>
+        </button>
+      </nav>
+    </section>
+
+    <!-- @main-content:end -->
+  </main>
+
+  <script>
+    // Mobile menu toggle
+    $('#mobile-menu-btn').on('click', function() {
+      $('#mobile-menu').toggleClass('hidden');
+    });
+
+    // Set active nav link based on current page
+    $(function() {
+      const page = window.location.pathname.split('/').pop() || 'home.html';
+      $('header nav a, #mobile-menu nav a').each(function() {
+        const href = $(this).attr('href');
+        if (href === page || (page === '' && href === 'home.html')) {
+          $(this).removeClass('text-on-surface-variant').addClass('text-on-surface');
+          if ($(this).closest('#mobile-menu').length === 0 && !$(this).hasClass('bg-ochre')) {
+            $(this).css('border-bottom', '2px solid var(--color-ochre)').css('padding-bottom', '2px');
+          }
+        }
+      });
+    });
+
+    // Filter pill styling helper
+    function setFilterPillActive($pill) {
+      $pill.addClass('active').css({
+        'background-color': '#B8956A',
+        'color': '#FFFFFF'
+      }).siblings('.filter-pill').removeClass('active').css({
+        'background-color': '',
+        'color': ''
+      });
+    }
+
+    // Category filter click handler
+    $('#category-filters').on('click', '.filter-pill', function() {
+      setFilterPillActive($(this));
+      const category = $(this).data('category');
+      // Filter product cards by category
+      if (category === 'all') {
+        $('#product-grid article').show();
+      } else {
+        $('#product-grid article').each(function() {
+          if ($(this).data('category') === category) {
+            $(this).show();
+          } else {
+            $(this).hide();
+          }
+        });
+      }
+    });
+
+    // MOQ filter click handler
+    $('#moq-filters').on('click', '.filter-pill', function() {
+      setFilterPillActive($(this));
+      const moqFilter = $(this).data('moq');
+      // Filter product cards by MOQ
+      $('#product-grid article').each(function() {
+        const moq = parseInt($(this).data('moq'));
+        let show = true;
+        if (moqFilter === 'under500') {
+          show = moq < 500;
+        } else if (moqFilter === '500-1000') {
+          show = moq >= 500 && moq <= 1000;
+        } else if (moqFilter === '1000plus') {
+          show = moq > 1000;
+        }
+        // Also respect current category filter
+        const activeCategory = $('#category-filters .filter-pill.active').data('category');
+        if (activeCategory !== 'all' && $(this).data('category') !== activeCategory) {
+          show = false;
+        }
+        if (show) {
+          $(this).show();
+        } else {
+          $(this).hide();
+        }
+      });
+    });
+
+    // Search input handler
+    $('#search-input').on('input', function() {
+      const query = $(this).val().toLowerCase().trim();
+      if (query === '') {
+        // Reset to current filter state
+        const activeCategory = $('#category-filters .filter-pill.active').data('category');
+        if (activeCategory === 'all') {
+          $('#product-grid article').show();
+        } else {
+          $('#product-grid article').each(function() {
+            if ($(this).data('category') === activeCategory) {
+              $(this).show();
+            } else {
+              $(this).hide();
+            }
+          });
+        }
+        return;
+      }
+      $('#product-grid article').each(function() {
+        const text = $(this).text().toLowerCase();
+        if (text.includes(query)) {
+          $(this).show();
+        } else {
+          $(this).hide();
+        }
+      });
+    });
+
+    // Pagination click handler
+    // Note: This is a prototype with only one page of data. Full implementation would:
+    // 1. Track current page state
+    // 2. Re-render the product grid with the corresponding page of products
+    // 3. Update active page number styling
+    // 4. Disable Prev on page 1 and Next on last page
+    $('#pagination').on('click', 'button', function() {
+      const $btn = $(this);
+      if ($btn.attr('id') === 'page-prev' || $btn.attr('id') === 'page-next') {
+        console.log('Pagination: ' + ($btn.attr('id') === 'page-prev' ? 'Previous' : 'Next') + ' page clicked');
+        return;
+      }
+      // Set active page number
+      $('#pagination button[id^="page-"]').not('#page-prev, #page-next').removeClass('bg-ochre text-white').addClass('text-on-surface-variant');
+      $btn.removeClass('text-on-surface-variant').addClass('bg-ochre text-white');
+      console.log('Pagination: Page ' + $btn.text() + ' clicked');
+    });
+
+    // Initialize filter pill styles
+    $(function() {
+      $('.filter-pill.active').css({
+        'background-color': '#B8956A',
+        'color': '#FFFFFF'
+      });
+      $('.filter-pill:not(.active)').css({
+        'background-color': '#EDEBE8',
+        'color': '#7A756E'
+      });
+      // Hover effect for inactive pills
+      $('.filter-pill:not(.active)').on('mouseenter', function() {
+        $(this).css('background-color', '#E5E2DD');
+      }).on('mouseleave', function() {
+        if (!$(this).hasClass('active')) {
+          $(this).css('background-color', '#EDEBE8');
+        }
+      });
+    });
+  </script>
+  <script>lucide.createIcons();</script>
+</body>
+
+</html>
