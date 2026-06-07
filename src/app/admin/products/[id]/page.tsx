@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Trash2, Plus, X } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Plus, X, Upload } from 'lucide-react';
 import { adminFetch } from '@/lib/admin-fetch';
 
 interface ProductDetail {
@@ -49,6 +49,7 @@ export default function AdminProductDetailPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'pricing' | 'images' | 'specs'>('basic');
 
   useEffect(() => {
@@ -120,6 +121,50 @@ export default function AdminProductDetailPage() {
     if (res.ok) {
       router.push('/admin/products');
     }
+  };
+
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    const newImages = [...(product?.product_images ?? [])];
+    const failed: string[] = [];
+    for (const file of Array.from(files)) {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('productId', id);
+      try {
+        const res = await adminFetch('/api/admin/upload', { method: 'POST', body: form });
+        if (res.ok) {
+          const { url } = (await res.json()) as { url: string };
+          newImages.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            url,
+            sort_order: newImages.length,
+          });
+        } else {
+          const err = (await res.json().catch(() => ({}))) as { error?: string };
+          failed.push(`${file.name}: ${err.error || res.statusText}`);
+        }
+      } catch (e) {
+        failed.push(`${file.name}: ${e instanceof Error ? e.message : 'Network error'}`);
+      }
+    }
+    updateProduct({ product_images: newImages });
+    setUploading(false);
+    if (failed.length) {
+      alert(`Some uploads failed:\n\n${failed.join('\n')}`);
+    }
+  };
+
+  const addImageByUrl = () => {
+    const url = window.prompt('Image URL (https:// or /products/...)');
+    if (!url) return;
+    updateProduct({
+      product_images: [
+        ...(product?.product_images ?? []),
+        { id: Date.now(), url, sort_order: (product?.product_images.length ?? 0) },
+      ],
+    });
   };
 
   if (loading) {
@@ -388,13 +433,27 @@ export default function AdminProductDetailPage() {
         <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-gray-900">Product Images</h2>
+            <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+              <Upload className="w-3.5 h-3.5" />
+              {uploading ? 'Uploading…' : 'Upload Images'}
+              <input
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  void handleImageUpload(e.target.files);
+                  e.target.value = '';
+                }}
+                disabled={uploading}
+              />
+            </label>
             <button
-              onClick={() => updateProduct({
-                product_images: [...product.product_images, { id: Date.now(), url: '/products/placeholder.jpg', sort_order: product.product_images.length }]
-              })}
+              onClick={addImageByUrl}
               className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
+              disabled={uploading}
             >
-              <Plus className="w-3.5 h-3.5" /> Add Image
+              <Plus className="w-3.5 h-3.5" /> Add by URL
             </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -426,7 +485,9 @@ export default function AdminProductDetailPage() {
             ))}
           </div>
           {product.product_images.length === 0 && (
-            <p className="text-sm text-gray-400">No images. Click &quot;Add Image&quot; to add one.</p>
+            <p className="text-sm text-gray-400">
+              No images yet. Click <strong>Upload Images</strong> to pick files, or <strong>Add by URL</strong> to paste a link.
+            </p>
           )}
         </div>
       )}
