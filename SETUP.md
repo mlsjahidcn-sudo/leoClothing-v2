@@ -25,13 +25,7 @@ This replaces the old custom admin auth (plaintext `password_hash` column,
 NEXT_PUBLIC_SUPABASE_URL=https://spyhznmiyfuijlqciheq.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 SUPABASE_SERVICE_ROLE_KEY=           # leave empty for now
-COZE_SUPABASE_URL=                   # Coze fallback (leave empty locally)
-COZE_SUPABASE_ANON_KEY=              # Coze fallback (leave empty locally)
-COZE_SUPABASE_SERVICE_ROLE_KEY=      # Coze fallback (leave empty locally)
 ```
-
-The Coze variables stay as a fallback so the existing Coze platform
-deployment continues to work without code changes.
 
 ## 2. Database setup
 
@@ -109,7 +103,7 @@ src/
       client.ts         # browser (admin pages, login form)
       server.ts         # API routes (per-request, user-scoped)
       admin.ts          # service-role (bypasses RLS; for seed only)
-      config.ts         # env-var resolution (NEXT_PUBLIC_* + COZE_* fallback)
+      config.ts         # env-var resolution (NEXT_PUBLIC_*)
       types.ts          # hand-authored Database type (optional helper)
     admin-auth.ts       # requireAdmin(request) → { user, profile, supabase } | NextResponse
     admin-fetch.ts      # adminFetch(url, init) — adds Authorization header
