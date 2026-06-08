@@ -12,7 +12,7 @@ interface ProductDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://chengfeng-international.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://chengfenginternational.com';
 
 // Product detail changes infrequently; cache for 5 min. Stale-while-revalidate
 // means a product edit shows up within 5 min on the public site, which is

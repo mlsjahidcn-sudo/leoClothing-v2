@@ -268,7 +268,7 @@ export default function AboutPage() {
               Request a Quote
             </a>
             <a
-              href="mailto:info@chengfeng-intl.com"
+              href="mailto:info@chengfenginternational.com"
               className="inline-flex items-center justify-center px-10 py-3.5 border border-white/20 text-white text-sm tracking-[0.08em] uppercase hover:border-white/40 transition-colors"
             >
               Email Us

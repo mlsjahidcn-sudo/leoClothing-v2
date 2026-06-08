@@ -9,7 +9,7 @@ import ProductsList from './ProductsList';
 // site; cuts a Supabase hit per pageview.
 export const revalidate = 60;
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://chengfeng-international.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://chengfenginternational.com';
 
 export async function generateMetadata({
   searchParams,

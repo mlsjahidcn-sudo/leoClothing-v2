@@ -51,8 +51,8 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-medium tracking-[0.06em] mb-4">Contact</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li>Tel: +86 769 8888 6666</li>
-              <li>Email: trade@chengfeng.com</li>
+              <li>Tel: +86 175 7500 1415</li>
+              <li>Email: info@chengfenginternational.com</li>
               <li>Address: Dongguan, Guangdong, China</li>
             </ul>
           </div>
