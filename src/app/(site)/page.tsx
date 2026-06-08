@@ -3,9 +3,17 @@ import Link from 'next/link';
 import { getFeaturedProducts, getAllCategories } from '@/lib/db-queries';
 import ProductCard from '@/components/ProductCard';
 
+// Public catalog changes at most a few times a day. Stale-by-60s is fine
+// for a B2B showcase — cuts a Supabase roundtrip on every page view.
+export const revalidate = 60;
+
 export default async function HomePage() {
-  const featuredProducts = await getFeaturedProducts();
-  const productCategories = (await getAllCategories()).filter((c) => c.slug !== 'all');
+  // Parallelize: two independent Supabase reads shouldn't be serial.
+  const [featuredProducts, allCategories] = await Promise.all([
+    getFeaturedProducts(),
+    getAllCategories(),
+  ]);
+  const productCategories = allCategories.filter((c) => c.slug !== 'all');
 
   return (
     <main>
@@ -42,10 +50,13 @@ export default async function HomePage() {
             </div>
             {/* Right: Hero Image (transparent background model) */}
             <div className="lg:w-7/12 flex items-end justify-center relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/hero-model.png"
                 alt="Chengfeng International - Premium men's knitwear collection"
+                width={1024}
+                height={1024}
+                priority
+                sizes="(max-width: 1024px) 100vw, 58vw"
                 className="w-full max-w-2xl lg:max-w-3xl h-auto object-contain"
               />
             </div>

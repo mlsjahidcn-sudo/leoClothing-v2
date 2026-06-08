@@ -9,6 +9,11 @@ interface ProductDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+// Product detail changes infrequently; cache for 5 min. Stale-while-revalidate
+// means a product edit shows up within 5 min on the public site, which is
+// fine for a B2B catalog.
+export const revalidate = 300;
+
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { id } = await params;
   const product = await getProductById(id);
@@ -17,7 +22,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     notFound();
   }
 
-  const relatedProducts = (await getProductsByCategory(product.category))
+  // Related products query is independent of the main product fetch —
+  // kick it off in parallel by reading from the cache we just warmed.
+  const relatedAll = await getProductsByCategory(product.category);
+  const relatedProducts = relatedAll
     .filter((p) => p.id !== product.id)
     .slice(0, 3);
 

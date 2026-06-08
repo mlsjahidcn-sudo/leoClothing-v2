@@ -11,11 +11,19 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get('search')?.trim();
   const category = searchParams.get('category');
   const active = searchParams.get('active');
+  // Pagination — defaults to 50/page, max 200. Without this the API
+  // returned the full table on every request, which is fine for 12 products
+  // but will choke the moment the catalog hits a few hundred.
+  const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10) || 50, 200);
+  const offset = Math.max(parseInt(searchParams.get('offset') ?? '0', 10) || 0, 0);
 
+  // `categories!inner` is required when filtering on a joined column
+  // (PostgREST silently ignores .eq() on a left join).
   let query = supabase
     .from('products')
-    .select('*, categories(slug, label), product_images(id, url, sort_order)')
-    .order('created_at', { ascending: false });
+    .select('*, categories!inner(slug, label), product_images(id, url, sort_order)')
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (search) {
     query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
@@ -27,9 +35,9 @@ export async function GET(request: NextRequest) {
     query = query.eq('is_active', active === 'true');
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ products: data });
+  return NextResponse.json({ products: data, total: count ?? undefined, limit, offset });
 }
 
 export async function POST(request: NextRequest) {

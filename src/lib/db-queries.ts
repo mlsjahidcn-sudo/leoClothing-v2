@@ -110,11 +110,17 @@ export async function getAllProducts(options?: {
   category?: string;
   featured?: boolean;
   search?: string;
+  limit?: number;
+  offset?: number;
 }): Promise<Product[]> {
   const client = getSupabaseClient();
+  // Note: `categories!inner` is required when filtering on a joined column
+  // (PostgREST won't accept `.eq('categories.slug', ...)` on a left join —
+  // it silently ignores the filter). The `!inner` forces the join to be
+  // required, which exposes the joined row to filtering.
   let query = client
     .from('products')
-    .select('*, categories(slug, label), product_images(url, sort_order), product_bulk_pricing(min_qty, max_qty, unit_price), product_colors(name, hex)')
+    .select('*, categories!inner(slug, label), product_images(url, sort_order), product_bulk_pricing(min_qty, max_qty, unit_price), product_colors(name, hex)')
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
@@ -127,6 +133,10 @@ export async function getAllProducts(options?: {
   if (options?.search) {
     query = query.or(`name.ilike.%${options.search}%,description.ilike.%${options.search}%,sku.ilike.%${options.search}%`);
   }
+  if (typeof options?.limit === 'number') {
+    const offset = options.offset ?? 0;
+    query = query.range(offset, offset + options.limit - 1);
+  }
 
   const { data, error } = await query;
   if (error || !data) return [];
@@ -137,7 +147,7 @@ export async function getProductById(id: string): Promise<Product | null> {
   const client = getSupabaseClient();
   const { data, error } = await client
     .from('products')
-    .select(`*, categories(slug, label), product_images(url, sort_order), product_bulk_pricing(min_qty, max_qty, unit_price), product_colors(name, hex), product_sizes(size_label, sort_order), product_size_chart(size, chest, waist, hip, length, sleeve), product_materials(fabric, lining, craft), product_design_details(detail_text, sort_order), product_certifications(cert_name)`)
+    .select(`*, categories!inner(slug, label), product_images(url, sort_order), product_bulk_pricing(min_qty, max_qty, unit_price), product_colors(name, hex), product_sizes(size_label, sort_order), product_size_chart(size, chest, waist, hip, length, sleeve), product_materials(fabric, lining, craft), product_design_details(detail_text, sort_order), product_certifications(cert_name)`)
     .eq('id', id)
     .eq('is_active', true)
     .maybeSingle();
