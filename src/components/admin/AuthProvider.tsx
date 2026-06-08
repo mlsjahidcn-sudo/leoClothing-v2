@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -56,29 +57,83 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUserView | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Use a ref to short-circuit double work when the boot effect AND
+  // the onAuthStateChange listener both pick up the same initial
+  // session. (Cheap; a single in-flight ref beats a useState +
+  // useEffect dance.)
+  const mountedRef = useRef(true);
+  const inflightLoadRef = useRef<Promise<AdminUserView | null> | null>(null);
 
   const loadProfile = useCallback(
     async (authUser: User): Promise<AdminUserView | null> => {
-      const { data, error } = await supabase
-        .from('admin_profiles')
-        .select('id, email, name, role, created_at')
-        .eq('id', authUser.id)
-        .maybeSingle();
-      if (error || !data) return null;
-      return toView(authUser, data);
+      // De-dupe: if a load is already in flight for the same user,
+      // reuse the existing promise. (Boot effect + listener can
+      // both pick up the same initial session and race.)
+      if (inflightLoadRef.current) return inflightLoadRef.current;
+      const p = (async () => {
+        const { data, error } = await supabase
+          .from('admin_profiles')
+          .select('id, email, name, role, created_at')
+          .eq('id', authUser.id)
+          .maybeSingle();
+        return error || !data ? null : toView(authUser, data);
+      })();
+      inflightLoadRef.current = p;
+      try {
+        return await p;
+      } finally {
+        inflightLoadRef.current = null;
+      }
     },
     [supabase],
   );
 
+  /**
+   * Apply a session to the auth context. Single source of truth for
+   * "given this session, what's the user state?" — used by the
+   * boot effect, the auth-state-change listener, and login().
+   *
+   * Always clears isLoading on completion. This is critical: the
+   * onAuthStateChange listener was previously NOT updating
+   * isLoading, which meant if it fired before the boot's
+   * getSession() resolved (and the latter then hung), the
+   * AdminShell would stay on "Loading..." until the watchdog.
+   */
+  const applySession = useCallback(
+    async (newSession: Session | null): Promise<AdminUserView | null> => {
+      setSession(newSession);
+      if (!newSession?.user) {
+        setUser(null);
+        setIsLoading(false);
+        return null;
+      }
+      try {
+        const view = await loadProfile(newSession.user);
+        if (!mountedRef.current) return view;
+        setUser(view);
+        setIsLoading(false);
+        return view;
+      } catch (e) {
+        console.error('[AdminAuthProvider] loadProfile failed:', e);
+        if (mountedRef.current) {
+          setUser(null);
+          setIsLoading(false);
+        }
+        return null;
+      }
+    },
+    [loadProfile],
+  );
+
   // Boot: restore session and load profile.
   useEffect(() => {
-    let mounted = true;
-    // Safety net: if getSession() never settles (hung promise, locked storage
-    // key, etc.) we'd be stuck on "Loading..." forever. Force isLoading=false
-    // after 5s so the AdminShell can at least redirect/redirect-loop instead
-    // of hanging indefinitely.
+    mountedRef.current = true;
+    // Safety net: if getSession() never settles (hung promise, locked
+    // storage key, etc.) we'd be stuck on "Loading..." forever. Force
+    // isLoading=false after 5s so the AdminShell can at least
+    // redirect/redirect-loop instead of hanging indefinitely.
     const watchdog = setTimeout(() => {
-      if (mounted) {
+      if (mountedRef.current) {
         console.warn('[AdminAuthProvider] boot watchdog: forcing isLoading=false after 5s timeout');
         setIsLoading(false);
       }
@@ -87,53 +142,35 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       .getSession()
       .then(async ({ data }) => {
         clearTimeout(watchdog);
-        if (!mounted) return;
-        setSession(data.session);
-        if (data.session?.user) {
-          try {
-            const view = await loadProfile(data.session.user);
-            if (mounted) setUser(view);
-          } catch (e) {
-            console.error('[AdminAuthProvider] loadProfile failed during boot:', e);
-            if (mounted) setUser(null);
-          }
-        }
-        if (mounted) setIsLoading(false);
+        if (!mountedRef.current) return;
+        await applySession(data.session);
       })
       .catch((e) => {
-        // Without this catch, a hung or rejected getSession() (e.g. corrupted
-        // session in localStorage) would leave isLoading=true forever and the
-        // admin portal stuck on "Loading...".
+        // Without this catch, a hung or rejected getSession() (e.g.
+        // corrupted session in localStorage) would leave isLoading=true
+        // forever and the admin portal stuck on "Loading...".
         clearTimeout(watchdog);
         console.error('[AdminAuthProvider] getSession() failed during boot:', e);
-        if (mounted) {
-          setSession(null);
-          setUser(null);
-          setIsLoading(false);
+        if (mountedRef.current) {
+          // Fire-and-forget — applySession itself clears isLoading
+          // synchronously after the (no-op) loadProfile on null.
+          void applySession(null);
         }
       });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      setSession(newSession);
-      if (newSession?.user) {
-        try {
-          const view = await loadProfile(newSession.user);
-          if (mounted) setUser(view);
-        } catch (e) {
-          console.error('[AdminAuthProvider] loadProfile failed in auth listener:', e);
-          if (mounted) setUser(null);
-        }
-      } else {
-        if (mounted) setUser(null);
-      }
+      // The listener fires for every auth event — SIGNED_IN, SIGNED_OUT,
+      // TOKEN_REFRESHED, INITIAL_SESSION, etc. Funnel them all through
+      // applySession so isLoading always settles.
+      await applySession(newSession);
     });
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       clearTimeout(watchdog);
       subscription.unsubscribe();
     };
-  }, [supabase, loadProfile]);
+  }, [supabase, applySession]);
 
   const login = useCallback<AuthContextValue['login']>(
     async (email, password) => {
@@ -141,7 +178,10 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       if (error || !data.user) {
         return { success: false, error: error?.message ?? 'Login failed' };
       }
-      const view = await loadProfile(data.user);
+      // Route through applySession so the listener doesn't also pick
+      // this up and double-load the profile. applySession is the
+      // single source of truth for "given this session, update state".
+      const view = await applySession(data.session);
       if (!view) {
         // Auth worked, but the user has no admin_profile row.
         await supabase.auth.signOut();
@@ -150,15 +190,16 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
           error: 'This account is not registered as an admin.',
         };
       }
-      setUser(view);
-      setSession(data.session);
       return { success: true };
     },
-    [supabase, loadProfile],
+    [supabase, applySession],
   );
 
   const logout = useCallback<AuthContextValue['logout']>(async () => {
     await supabase.auth.signOut();
+    // The onAuthStateChange(SIGNED_OUT) listener will run applySession(null)
+    // for us — but we set state here too so the UI updates immediately
+    // even if the listener fires after the redirect.
     setUser(null);
     setSession(null);
     router.push('/admin/login');

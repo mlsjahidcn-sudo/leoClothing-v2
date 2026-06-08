@@ -20,8 +20,11 @@ export default function AdminLoginPage() {
     try {
       const result = await login(email, password);
       if (result.success) {
+        // router.refresh() is a no-op here — the admin pages are all
+        // 'use client' so there's no server component to re-fetch.
+        // The AdminShell's user-state already reflects the new session
+        // by the time this push resolves.
         router.push('/admin');
-        router.refresh();
       } else {
         setError(result.error || 'Login failed');
       }
