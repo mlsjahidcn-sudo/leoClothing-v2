@@ -1,6 +1,7 @@
-@import 'https://fonts.googleapis.cn/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap';
+/* Tailwind v4 — no tw-animate-css (removed when we slimmed the bundle).
+   Animations can be added later with the standard `tw-animate-css`
+   pattern if needed; the catalog currently has no animated surfaces. */
 @import 'tailwindcss';
-@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -46,12 +47,19 @@
   --color-ochre: #B8956A;
   --color-ochre-light: #D4B896;
   --color-ochre-dark: #96754E;
-  --font-serif-display: 'Playfair Display', 'Noto Serif SC', ui-serif, Georgia, serif;
-  --font-serif-cn: 'Noto Serif SC', ui-serif, Georgia, serif;
+  /* Font families — wired to the CSS variables injected by next/font
+     in src/app/layout.tsx. Self-hosted woff2, preloaded, no FOUT.
+     The literal names in the fallback stack remain so system fonts
+     still cover browsers that don't load next/font (rare, but
+     graceful). */
+  --font-serif-display:
+    var(--font-playfair), 'Playfair Display', 'Noto Serif SC', ui-serif, Georgia, serif;
+  --font-serif-cn:
+    var(--font-noto-serif-sc), 'Noto Serif SC', ui-serif, Georgia, serif;
   --font-sans:
-    'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', ui-sans-serif,
-    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
+    var(--font-inter), 'Inter', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
     'Courier New', monospace;

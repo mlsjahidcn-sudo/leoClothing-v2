@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getProductById, getProductsByCategory } from '@/lib/db-queries';
+import { getProductById } from '@/lib/db-queries';
 import { getCategoryLabel } from '@/lib/products';
 import SizeSelector from '@/components/SizeSelector';
+import RelatedProducts from './RelatedProducts';
 
 interface ProductDetailPageProps {
   params: Promise<{ id: string }>;
@@ -58,12 +60,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     notFound();
   }
 
-  // Related products query is independent of the main product fetch —
-  // kick it off in parallel by reading from the cache we just warmed.
-  const relatedAll = await getProductsByCategory(product.category);
-  const relatedProducts = relatedAll
-    .filter((p) => p.id !== product.id)
-    .slice(0, 3);
+  // Related products now live in their own async server component so
+  // the main product page streams to the browser first, regardless of
+  // how slow the related-products query is. See RelatedProducts.tsx.
 
   const allImages = [...product.images];
 
@@ -344,43 +343,32 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
       </section>
 
-      {/* Related Products */}
-      {relatedProducts.length > 0 && (
-        <section className="py-12 lg:py-16 bg-[#F5F0EB] border-t border-[#D9D4CE]">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <h2 className="font-serif text-xl text-[#2C2C2C] mb-8" style={{ letterSpacing: '0.04em' }}>
-              Similar Products
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {relatedProducts.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/products/${p.id}`}
-                  className="group block bg-white border border-[#D9D4CE] hover:border-[#B8956A] transition-colors overflow-hidden"
-                >
-                  <div className="relative h-64 bg-[#EDEBE8] overflow-hidden">
-                    <Image
-                      src={p.images[0]}
-                      alt={p.name}
-                      fill
-                      className="object-cover object-top group-hover:scale-[1.02] transition-transform duration-500"
-                      sizes="(max-width: 640px) 100vw, 33vw"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <p className="text-[#B8956A] text-[10px] tracking-[0.1em] uppercase mb-1">{getCategoryLabel(p.category)}</p>
-                    <h3 className="font-serif text-sm text-[#2C2C2C] mb-2">{p.name}</h3>
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-[#2C2C2C]">From ${p.wholesalePrice.toFixed(2)}/unit</span>
-                      <span className="text-[10px] text-[#2C2C2C]/40">MOQ: {p.moq}</span>
+      {/* Related Products — streams in independently so a slow
+          `getProductsByCategory` doesn't block the main product
+          page from being sent to the browser. The skeleton keeps
+          the layout stable so there's no CLS shift. */}
+      <Suspense
+        fallback={
+          <section className="py-12 lg:py-16 bg-[#F5F0EB] border-t border-[#D9D4CE]">
+            <div className="mx-auto max-w-7xl px-6 lg:px-8">
+              <div className="h-6 w-48 bg-[#D9D4CE] rounded mb-8 animate-pulse" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-white border border-[#D9D4CE] overflow-hidden">
+                    <div className="h-64 bg-[#EDEBE8] animate-pulse" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-3 w-16 bg-[#EDEBE8] rounded animate-pulse" />
+                      <div className="h-4 w-3/4 bg-[#EDEBE8] rounded animate-pulse" />
                     </div>
                   </div>
-                </Link>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
-      )}
+          </section>
+        }
+      >
+        <RelatedProducts category={product.category} excludeId={product.id} />
+      </Suspense>
     </main>
     </>
   );
