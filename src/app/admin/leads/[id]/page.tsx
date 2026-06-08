@@ -90,14 +90,26 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   const handleStatusChange = async (newStatus: string) => {
     if (!lead) return;
+    const previousStatus = lead.status;
     setSaving(true);
-    await adminFetch(`/api/admin/leads/${lead.id}`, {
+    // Optimistic update — flip the UI immediately, roll back if the
+    // PATCH fails. The activity log entry is best-effort and only
+    // fires on success.
+    setLead((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    const res = await adminFetch(`/api/admin/leads/${lead.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
     });
+    if (!res.ok) {
+      setLead((prev) => (prev ? { ...prev, status: previousStatus } : prev));
+      const err = await res.json().catch(() => ({}));
+      alert(`Failed to update status: ${err.error ?? res.statusText}`);
+      setSaving(false);
+      return;
+    }
     // Log activity
-    const oldLabel = STATUS_PIPELINE.find(s => s.value === lead.status)?.label || lead.status;
+    const oldLabel = STATUS_PIPELINE.find(s => s.value === previousStatus)?.label || previousStatus;
     const newLabel = STATUS_PIPELINE.find(s => s.value === newStatus)?.label || newStatus;
     await adminFetch(`/api/admin/leads/${lead.id}/activities`, {
       method: 'POST',

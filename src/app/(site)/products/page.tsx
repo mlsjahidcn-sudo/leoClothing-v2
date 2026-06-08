@@ -1,51 +1,55 @@
-'use client';
+import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import { getAllProducts, getAllCategories } from '@/lib/db-queries';
+import { getCategoryLabel } from '@/lib/products';
+import ProductsList from './ProductsList';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import ProductCard from '@/components/ProductCard';
-import type { Product, Category, CategorySlug } from '@/lib/products';
+// Public catalog: serve from cache, re-fetch in the background every
+// 60s. Means a product edit shows up within a minute on the public
+// site; cuts a Supabase hit per pageview.
+export const revalidate = 60;
 
-function ProductsContent() {
-  const searchParams = useSearchParams();
-  const initialCategory = (searchParams.get('category') as CategorySlug) || 'all';
-  const [activeCategory, setActiveCategory] = useState<CategorySlug>(initialCategory);
-  const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc' | 'moq'>('default');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://chengfeng-international.com';
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/products').then((r) => r.json()),
-      fetch('/api/categories').then((r) => r.json()),
-    ])
-      .then(([prodData, catData]) => {
-        setProducts(prodData.products || []);
-        setCategories(catData.categories || []);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}): Promise<Metadata> {
+  const { category } = await searchParams;
+  const label = category && category !== 'all' ? getCategoryLabel(category) : null;
+  const title = label
+    ? `${label} Wholesale — Premium Knitwear for B2B Brands | Chengfeng International`
+    : 'Wholesale Catalog — Premium Knitwear for B2B Brands | Chengfeng International';
+  const description = label
+    ? `Browse our ${label.toLowerCase()} wholesale collection. Premium menswear with flexible MOQ, tiered pricing, and OEM/ODM services for fashion brands worldwide.`
+    : 'Browse our full wholesale catalog of premium knitwear. Knit polos, t-shirts, striped tees, and knitwear with flexible MOQ, tiered pricing, and OEM/ODM services for fashion brands worldwide.';
+  return {
+    title,
+    description,
+    alternates: { canonical: `${SITE_URL}/products${category ? `?category=${category}` : ''}` },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}/products${category ? `?category=${category}` : ''}`,
+      type: 'website',
+      siteName: 'Chengfeng International',
+    },
+  };
+}
 
-  const filteredProducts = useMemo(() => {
-    let result = activeCategory === 'all'
-      ? products
-      : products.filter((p) => p.category === activeCategory);
-
-    switch (sortBy) {
-      case 'price-asc':
-        result = [...result].sort((a, b) => a.wholesalePrice - b.wholesalePrice);
-        break;
-      case 'price-desc':
-        result = [...result].sort((a, b) => b.wholesalePrice - a.wholesalePrice);
-        break;
-      case 'moq':
-        result = [...result].sort((a, b) => a.moq - b.moq);
-        break;
-    }
-
-    return result;
-  }, [activeCategory, sortBy, products]);
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const { category } = await searchParams;
+  // Server-side fetch. RSC streams the layout + header immediately and
+  // fills in the grid as soon as Supabase returns.
+  const [products, categories] = await Promise.all([
+    getAllProducts({ category }),
+    getAllCategories(),
+  ]);
 
   return (
     <main className="min-h-screen bg-[#F5F0EB]">
@@ -62,77 +66,9 @@ function ProductsContent() {
         </div>
       </section>
 
-      {/* Filters */}
-      <section className="sticky top-0 z-20 bg-white border-b border-[#D9D4CE]">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 gap-4">
-            {/* Category Tabs */}
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-              {categories.map((cat) => (
-                <button
-                  key={cat.slug}
-                  onClick={() => setActiveCategory(cat.slug as CategorySlug)}
-                  className={`px-4 py-2 text-xs tracking-[0.08em] uppercase whitespace-nowrap transition-colors ${
-                    activeCategory === cat.slug
-                      ? 'bg-[#2C2C2C] text-white'
-                      : 'text-[#2C2C2C]/60 hover:text-[#2C2C2C] hover:bg-[#F5F0EB]'
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-            {/* Sort */}
-            <div className="flex items-center gap-3">
-              <span className="text-[#2C2C2C]/40 text-xs tracking-[0.08em] uppercase">Sort:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                className="text-xs text-[#2C2C2C] bg-transparent border border-[#D9D4CE] px-3 py-1.5 focus:outline-none focus:border-[#B8956A]"
-              >
-                <option value="default">Default</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-                <option value="moq">Lowest MOQ</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Product Grid */}
-      <section className="py-12 lg:py-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          {loading ? (
-            <div className="text-center py-20">
-              <p className="text-[#2C2C2C]/40 text-lg">Loading catalog...</p>
-            </div>
-          ) : (
-            <>
-              {/* Count */}
-              <p className="text-[#2C2C2C]/40 text-sm mb-8">
-                {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''} available for wholesale
-              </p>
-
-              {filteredProducts.length === 0 ? (
-                <div className="text-center py-20">
-                  <p className="text-[#2C2C2C]/40 text-lg">No products found in this category.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredProducts.map((product, index) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      variant={index % 5 === 0 ? 'large' : 'standard'}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
+      <Suspense fallback={null}>
+        <ProductsList initialProducts={products} categories={categories} initialCategory={category ?? 'all'} />
+      </Suspense>
 
       {/* CTA */}
       <section className="py-12 bg-white border-t border-[#D9D4CE]">
@@ -149,17 +85,5 @@ function ProductsContent() {
         </div>
       </section>
     </main>
-  );
-}
-
-export default function ProductsPage() {
-  return (
-    <Suspense fallback={
-      <main className="min-h-screen bg-[#F5F0EB] flex items-center justify-center">
-        <p className="text-[#2C2C2C]/40">Loading catalog...</p>
-      </main>
-    }>
-      <ProductsContent />
-    </Suspense>
   );
 }

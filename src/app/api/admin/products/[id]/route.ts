@@ -168,3 +168,40 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
+
+// PATCH — partial update. Currently supports only the boolean flags
+// (is_active, is_featured, is_new); the full PUT is used for
+// everything else. Optimistic UI on the products list calls this
+// for the inline "active" toggle.
+export async function PATCH(request: NextRequest, { params }: Params) {
+  const auth = await requireAdmin(request);
+  if (!auth.ok) return auth.response;
+
+  let body: { is_active?: boolean; is_featured?: boolean; is_new?: boolean };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  // Whitelist — never let the client write to anything else here.
+  const patch: Record<string, boolean> = {};
+  if (typeof body.is_active === 'boolean') patch.is_active = body.is_active;
+  if (typeof body.is_featured === 'boolean') patch.is_featured = body.is_featured;
+  if (typeof body.is_new === 'boolean') patch.is_new = body.is_new;
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: 'No supported fields to update' }, { status: 400 });
+  }
+  patch.updated_at = new Date().toISOString() as unknown as boolean;
+
+  const { id } = await params;
+  const { data, error } = await auth.supabase
+    .from('products')
+    .update(patch)
+    .eq('id', id)
+    .select('id, is_active, is_featured, is_new, updated_at')
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ product: data });
+}

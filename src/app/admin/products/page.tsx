@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Pencil, Trash2, Eye } from 'lucide-react';
 import { adminFetch } from '@/lib/admin-fetch';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 interface ProductRow {
   id: string;
@@ -23,10 +24,12 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  // Debounce the search so a 5-char query is 1 API call, not 5.
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   useEffect(() => {
     const params = new URLSearchParams();
-    if (search) params.set('search', search);
+    if (debouncedSearch) params.set('search', debouncedSearch);
     if (categoryFilter) params.set('category', categoryFilter);
 
     setLoading(true);
@@ -35,13 +38,35 @@ export default function AdminProductsPage() {
       .then((d) => setProducts(d.products || []))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [search, categoryFilter]);
+  }, [debouncedSearch, categoryFilter]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to deactivate this product?')) return;
     const res = await adminFetch(`/api/admin/products/${id}`, { method: 'DELETE' });
     if (res.ok) {
       setProducts((prev) => prev.filter((p) => p.id !== id));
+    }
+  };
+
+  // Optimistic toggle: flip the badge instantly, roll back on failure.
+  // The PATCH endpoint only updates the boolean, so it's cheap and
+  // safe to fire-and-forget from the UI's perspective.
+  const handleToggleActive = async (id: string, next: boolean) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, is_active: next } : p)),
+    );
+    const res = await adminFetch(`/api/admin/products/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: next }),
+    });
+    if (!res.ok) {
+      // Roll back on failure and surface a non-blocking error.
+      setProducts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, is_active: !next } : p)),
+      );
+      const err = await res.json().catch(() => ({}));
+      alert(`Failed to update: ${err.error ?? res.statusText}`);
     }
   };
 
@@ -145,15 +170,18 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-1.5">
-                        {p.is_active ? (
-                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-medium">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">
-                            Inactive
-                          </span>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(p.id, !p.is_active)}
+                          className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium transition-opacity hover:opacity-70 ${
+                            p.is_active
+                              ? 'bg-green-50 text-green-700'
+                              : 'bg-gray-100 text-gray-500'
+                          }`}
+                          title={p.is_active ? 'Click to deactivate' : 'Click to activate'}
+                        >
+                          {p.is_active ? 'Active' : 'Inactive'}
+                        </button>
                         {p.is_featured && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium">
                             Featured

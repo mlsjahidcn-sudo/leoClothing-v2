@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -9,10 +10,45 @@ interface ProductDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://chengfeng-international.com';
+
 // Product detail changes infrequently; cache for 5 min. Stale-while-revalidate
 // means a product edit shows up within 5 min on the public site, which is
 // fine for a B2B catalog.
 export const revalidate = 300;
+
+export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const product = await getProductById(id);
+  if (!product) {
+    return { title: 'Product Not Found' };
+  }
+  const label = getCategoryLabel(product.category);
+  const title = `${product.name} — Wholesale ${label} | Chengfeng International`;
+  const description = product.description
+    ? product.description.slice(0, 160)
+    : `Wholesale ${product.name} from Chengfeng International. Premium ${label.toLowerCase()} with MOQ ${product.moq}, tiered bulk pricing, and OEM/ODM services.`;
+  const image = product.images[0] ? new URL(product.images[0], SITE_URL).toString() : undefined;
+  return {
+    title,
+    description,
+    alternates: { canonical: `${SITE_URL}/products/${product.id}` },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}/products/${product.id}`,
+      type: 'website',
+      siteName: 'Chengfeng International',
+      images: image ? [{ url: image, alt: product.name }] : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
 
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { id } = await params;
@@ -29,10 +65,39 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     .filter((p) => p.id !== product.id)
     .slice(0, 3);
 
-  // Use only the main product images
   const allImages = [...product.images];
 
+  // JSON-LD Product schema — helps Google Shopping and Bing surface the
+  // product with price, availability, and brand info directly in search.
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    sku: product.sku,
+    description: product.description,
+    image: product.images,
+    brand: { '@type': 'Brand', name: 'Chengfeng International' },
+    category: getCategoryLabel(product.category),
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'USD',
+      price: product.wholesalePrice,
+      priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0],
+      availability: 'https://schema.org/InStock',
+      url: `${SITE_URL}/products/${product.id}`,
+      seller: { '@type': 'Organization', name: 'Chengfeng International' },
+    },
+  };
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
     <main className="min-h-screen bg-[#F5F0EB]">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-[#D9D4CE]">
@@ -317,5 +382,6 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </section>
       )}
     </main>
+    </>
   );
 }

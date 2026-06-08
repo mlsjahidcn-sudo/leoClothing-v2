@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { Package, FileText, Users, DollarSign, ArrowRight, Clock, AlertCircle, CheckCircle2, XCircle, UserCheck, Handshake, TrendingUp } from 'lucide-react';
+import { Package, FileText, Users, DollarSign, ArrowRight, Clock, AlertCircle, CheckCircle2, XCircle, UserCheck, Handshake, TrendingUp, RefreshCw } from 'lucide-react';
 import { adminFetch } from '@/lib/admin-fetch';
+import { usePollingFetch, stableStringify } from '@/hooks/use-polling-fetch';
 
 interface DashboardData {
   totalProducts: number;
@@ -50,18 +51,20 @@ const leadStatusConfig: Record<string, { label: string; color: string; icon: typ
 };
 
 export default function AdminDashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Poll every 30s. Pause on tab blur so a backgrounded admin tab
+  // doesn't burn Supabase quota. Bump "last updated" only when the
+  // data actually changes (otherwise the pill says "0s ago" forever).
+  const { data, loading, lastUpdated, refresh } = usePollingFetch<DashboardData>({
+    fetcher: async () => {
+      const res = await adminFetch('/api/admin/dashboard');
+      if (!res.ok) throw new Error(`Dashboard fetch failed: ${res.status}`);
+      return res.json();
+    },
+    intervalMs: 30_000,
+    compare: (a, b) => stableStringify(a) === stableStringify(b),
+  });
 
-  useEffect(() => {
-    adminFetch('/api/admin/dashboard')
-      .then((res) => res.json())
-      .then((d) => setData(d))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-8 w-48 bg-gray-200 rounded" />
@@ -78,7 +81,24 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <div className="flex items-center gap-3 text-xs text-gray-400">
+          {lastUpdated && (
+            <span>
+              Updated {Math.max(0, Math.floor((Date.now() - lastUpdated) / 1000))}s ago
+            </span>
+          )}
+          <button
+            onClick={refresh}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+            title="Refresh now"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refresh
+          </button>
+        </div>
+      </div>
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

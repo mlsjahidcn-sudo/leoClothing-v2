@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { AlertCircle, Clock, CheckCircle2, XCircle, Download } from 'lucide-react';
 import { adminFetch } from '@/lib/admin-fetch';
+import { toCsv, downloadCsv } from '@/lib/csv';
 
 interface RfqRow {
   id: string;
@@ -57,7 +58,32 @@ export default function AdminRfqsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">RFQs</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-gray-900">RFQs</h1>
+        <button
+          onClick={() => {
+            const csv = toCsv(rfqs as unknown as Record<string, unknown>[], [
+              { key: 'id', header: 'ID' },
+              { key: 'company_name', header: 'Company' },
+              { key: 'contact_person', header: 'Contact' },
+              { key: 'email', header: 'Email' },
+              { key: 'phone', header: 'Phone' },
+              { key: 'country', header: 'Country' },
+              { key: 'business_type', header: 'Business Type' },
+              { key: 'quantity_range', header: 'Quantity Range' },
+              { key: 'status', header: 'Status' },
+              { key: 'created_at', header: 'Created At' },
+            ]);
+            const stamp = new Date().toISOString().split('T')[0];
+            downloadCsv(`rfqs-${stamp}.csv`, csv);
+          }}
+          disabled={rfqs.length === 0}
+          className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV
+        </button>
+      </div>
 
       {/* Status tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1">

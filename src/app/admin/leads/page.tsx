@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Download } from 'lucide-react';
 import { adminFetch } from '@/lib/admin-fetch';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { toCsv, downloadCsv } from '@/lib/csv';
 
 interface Lead {
   id: string;
@@ -51,17 +54,20 @@ export default function AdminLeadsPage() {
     source: 'manual', estimated_value: '', products_interest: '', notes: '',
   });
 
+  // Debounce the search so a 5-char query is 1 API call, not 5.
+  const debouncedSearch = useDebouncedValue(search, 300);
+
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (statusFilter !== 'all') params.set('status', statusFilter);
     if (sourceFilter !== 'all') params.set('source', sourceFilter);
-    if (search) params.set('search', search);
+    if (debouncedSearch) params.set('search', debouncedSearch);
     const res = await adminFetch(`/api/admin/leads?${params}`);
     const data = await res.json();
     setLeads(data.leads || []);
     setLoading(false);
-  }, [statusFilter, sourceFilter, search]);
+  }, [statusFilter, sourceFilter, debouncedSearch]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -91,6 +97,26 @@ export default function AdminLeadsPage() {
 
   const countByStatus = (status: string) => leads.filter(l => l.status === status).length;
 
+  const handleExport = () => {
+    const csv = toCsv(leads as unknown as Record<string, unknown>[], [
+      { key: 'id', header: 'ID' },
+      { key: 'company_name', header: 'Company' },
+      { key: 'contact_person', header: 'Contact' },
+      { key: 'email', header: 'Email' },
+      { key: 'phone', header: 'Phone' },
+      { key: 'country', header: 'Country' },
+      { key: 'source', header: 'Source' },
+      { key: 'status', header: 'Status' },
+      { key: 'estimated_value', header: 'Est. Value (USD)' },
+      { key: 'products_interest', header: 'Products Interest' },
+      { key: 'next_follow_up', header: 'Next Follow Up' },
+      { key: 'notes', header: 'Notes' },
+      { key: 'created_at', header: 'Created At' },
+    ]);
+    const stamp = new Date().toISOString().split('T')[0];
+    downloadCsv(`leads-${stamp}.csv`, csv);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -98,12 +124,23 @@ export default function AdminLeadsPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Lead Management</h1>
           <p className="text-sm text-gray-500 mt-1">Track and manage potential customers through your sales pipeline</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-[#B8956A] text-white rounded-md hover:bg-[#a07d55] transition-colors text-sm font-medium"
-        >
-          + Add Lead
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={leads.length === 0}
+            className="px-3 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+            title="Download the current filtered list as CSV"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-[#B8956A] text-white rounded-md hover:bg-[#a07d55] transition-colors text-sm font-medium"
+          >
+            + Add Lead
+          </button>
+        </div>
       </div>
 
       {/* Status Pipeline Summary */}
