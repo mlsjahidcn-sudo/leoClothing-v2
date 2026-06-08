@@ -159,11 +159,29 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       });
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      // The listener fires for every auth event — SIGNED_IN, SIGNED_OUT,
-      // TOKEN_REFRESHED, INITIAL_SESSION, etc. Funnel them all through
-      // applySession so isLoading always settles.
-      await applySession(newSession);
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      // Fire-and-forget, NOT awaited.
+      //
+      // The supabase-js listener is invoked from inside its own
+      // _initialize() (via _notifyAllSubscribers), which is itself
+      // holding a Web Lock. If we await applySession here, the chain
+      // is:
+      //   _initialize -> _notifyAllSubscribers (awaits this cb)
+      //     -> applySession -> loadProfile -> supabase query
+      //       -> getSession() -> await initializePromise
+      //   ...which is still pending because we're inside it.
+      // Classic deadlock. The supabase query then blocks on a Web
+      // Lock acquire that has a 10s timeout, the user sees 5s of
+      // "Loading..." and gets bounced to /admin/login by our
+      // watchdog. The query then completes ~10s in, far too late.
+      //
+      // Fire-and-forget breaks the cycle: the listener returns
+      // immediately, _initialize completes, initializePromise
+      // resolves, and applySession runs in the background and
+      // sets state when it's done. The boot's getSession().then()
+      // path also uses applySession (still awaited) so we still
+      // get a deterministic source-of-truth update on first paint.
+      void applySession(newSession);
     });
     return () => {
       mountedRef.current = false;
