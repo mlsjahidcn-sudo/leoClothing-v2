@@ -73,28 +73,64 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   // Boot: restore session and load profile.
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      if (data.session?.user) {
-        const view = await loadProfile(data.session.user);
-        if (mounted) setUser(view);
+    // Safety net: if getSession() never settles (hung promise, locked storage
+    // key, etc.) we'd be stuck on "Loading..." forever. Force isLoading=false
+    // after 5s so the AdminShell can at least redirect/redirect-loop instead
+    // of hanging indefinitely.
+    const watchdog = setTimeout(() => {
+      if (mounted) {
+        console.warn('[AdminAuthProvider] boot watchdog: forcing isLoading=false after 5s timeout');
+        setIsLoading(false);
       }
-      if (mounted) setIsLoading(false);
-    });
+    }, 5000);
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        clearTimeout(watchdog);
+        if (!mounted) return;
+        setSession(data.session);
+        if (data.session?.user) {
+          try {
+            const view = await loadProfile(data.session.user);
+            if (mounted) setUser(view);
+          } catch (e) {
+            console.error('[AdminAuthProvider] loadProfile failed during boot:', e);
+            if (mounted) setUser(null);
+          }
+        }
+        if (mounted) setIsLoading(false);
+      })
+      .catch((e) => {
+        // Without this catch, a hung or rejected getSession() (e.g. corrupted
+        // session in localStorage) would leave isLoading=true forever and the
+        // admin portal stuck on "Loading...".
+        clearTimeout(watchdog);
+        console.error('[AdminAuthProvider] getSession() failed during boot:', e);
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setIsLoading(false);
+        }
+      });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       setSession(newSession);
       if (newSession?.user) {
-        const view = await loadProfile(newSession.user);
-        setUser(view);
+        try {
+          const view = await loadProfile(newSession.user);
+          if (mounted) setUser(view);
+        } catch (e) {
+          console.error('[AdminAuthProvider] loadProfile failed in auth listener:', e);
+          if (mounted) setUser(null);
+        }
       } else {
-        setUser(null);
+        if (mounted) setUser(null);
       }
     });
     return () => {
       mounted = false;
+      clearTimeout(watchdog);
       subscription.unsubscribe();
     };
   }, [supabase, loadProfile]);
