@@ -20,7 +20,7 @@ export default function AboutPage() {
             </div>
             <div className="relative h-[400px] lg:h-[500px] overflow-hidden">
               <Image
-                src="/products/sweater-white.jpg"
+                src="/products/sweater-white.webp"
                 alt="Chengfeng International manufacturing"
                 fill
                 className="object-cover object-top"

@@ -9,7 +9,7 @@ export const products: Product[] = [
     name: 'Navy Herringbone Knit Polo',
     category: 'polos',
     series: 'Essential Collection',
-    images: ['/products/polo-navy.jpg'],
+    images: ['/products/polo-navy.webp'],
     wholesalePrice: 4.20,
     bulkPricing: [
       { minQty: 50, maxQty: 99, unitPrice: 4.20 },
@@ -54,7 +54,7 @@ export const products: Product[] = [
     name: 'Black Zip-Neck Knit Polo',
     category: 'polos',
     series: 'Essential Collection',
-    images: ['/products/polo-zip-black.jpg'],
+    images: ['/products/polo-zip-black.webp'],
     wholesalePrice: 4.50,
     bulkPricing: [
       { minQty: 50, maxQty: 99, unitPrice: 4.50 },
@@ -100,7 +100,7 @@ export const products: Product[] = [
     name: 'White Zip-Neck Knit Polo',
     category: 'polos',
     series: 'Essential Collection',
-    images: ['/products/polo-zip-white.jpg'],
+    images: ['/products/polo-zip-white.webp'],
     wholesalePrice: 4.50,
     bulkPricing: [
       { minQty: 50, maxQty: 99, unitPrice: 4.50 },
@@ -145,7 +145,7 @@ export const products: Product[] = [
     name: 'Black Contrast-Trim Zip Polo',
     category: 'polos',
     series: 'Signature Collection',
-    images: ['/products/polo-contrast-black.jpg'],
+    images: ['/products/polo-contrast-black.webp'],
     wholesalePrice: 4.80,
     bulkPricing: [
       { minQty: 50, maxQty: 99, unitPrice: 4.80 },
@@ -190,7 +190,7 @@ export const products: Product[] = [
     name: 'Espresso Brown Contrast Collar Polo',
     category: 'polos',
     series: 'Signature Collection',
-    images: ['/products/polo-brown-contrast.jpg'],
+    images: ['/products/polo-brown-contrast.webp'],
     wholesalePrice: 4.80,
     bulkPricing: [
       { minQty: 50, maxQty: 99, unitPrice: 4.80 },
@@ -235,7 +235,7 @@ export const products: Product[] = [
     name: 'White Sand-Trim Zip Polo',
     category: 'polos',
     series: 'Signature Collection',
-    images: ['/products/polo-white-contrast.jpg'],
+    images: ['/products/polo-white-contrast.webp'],
     wholesalePrice: 4.80,
     bulkPricing: [
       { minQty: 50, maxQty: 99, unitPrice: 4.80 },
@@ -280,7 +280,7 @@ export const products: Product[] = [
     name: 'Chocolate Brown Ribbed Knit Tee',
     category: 't-shirts',
     series: 'Essential Collection',
-    images: ['/products/tee-brown.jpg'],
+    images: ['/products/tee-brown.webp'],
     wholesalePrice: 3.20,
     bulkPricing: [
       { minQty: 100, maxQty: 249, unitPrice: 3.20 },
@@ -326,7 +326,7 @@ export const products: Product[] = [
     name: 'White Ribbed Knit Tee',
     category: 't-shirts',
     series: 'Essential Collection',
-    images: ['/products/tee-white.jpg'],
+    images: ['/products/tee-white.webp'],
     wholesalePrice: 3.20,
     bulkPricing: [
       { minQty: 100, maxQty: 249, unitPrice: 3.20 },
@@ -371,7 +371,7 @@ export const products: Product[] = [
     name: 'Warm Brown Ribbed Knit Tee',
     category: 't-shirts',
     series: 'Essential Collection',
-    images: ['/products/tee-warm-brown.jpg'],
+    images: ['/products/tee-warm-brown.webp'],
     wholesalePrice: 3.20,
     bulkPricing: [
       { minQty: 100, maxQty: 249, unitPrice: 3.20 },
@@ -416,7 +416,7 @@ export const products: Product[] = [
     name: 'Charcoal Stripe Knit Tee',
     category: 'striped-tees',
     series: 'Stripe Collection',
-    images: ['/products/tee-stripe-charcoal.jpg', '/products/tee-stripe-detail.jpg'],
+    images: ['/products/tee-stripe-charcoal.webp', '/products/tee-stripe-detail.webp'],
     wholesalePrice: 3.50,
     bulkPricing: [
       { minQty: 100, maxQty: 249, unitPrice: 3.50 },
@@ -461,7 +461,7 @@ export const products: Product[] = [
     name: 'Grey Horizontal Stripe Tee',
     category: 'striped-tees',
     series: 'Stripe Collection',
-    images: ['/products/tee-stripe-grey.jpg'],
+    images: ['/products/tee-stripe-grey.webp'],
     wholesalePrice: 3.50,
     bulkPricing: [
       { minQty: 100, maxQty: 249, unitPrice: 3.50 },
@@ -506,7 +506,7 @@ export const products: Product[] = [
     name: 'Black Thin-Stripe Crew Tee',
     category: 'striped-tees',
     series: 'Stripe Collection',
-    images: ['/products/tee-stripe-black-detail.jpg'],
+    images: ['/products/tee-stripe-black-detail.webp'],
     wholesalePrice: 3.50,
     bulkPricing: [
       { minQty: 100, maxQty: 249, unitPrice: 3.50 },
@@ -552,7 +552,7 @@ export const products: Product[] = [
     name: 'White Crewneck Long-Sleeve Sweater',
     category: 'knitwear',
     series: 'Essential Collection',
-    images: ['/products/sweater-white.jpg'],
+    images: ['/products/sweater-white.webp'],
     wholesalePrice: 5.00,
     bulkPricing: [
       { minQty: 50, maxQty: 99, unitPrice: 5.00 },

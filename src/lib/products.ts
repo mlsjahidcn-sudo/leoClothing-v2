@@ -58,10 +58,10 @@ export type ProductCategory = 'polos' | 't-shirts' | 'striped-tees' | 'knitwear'
 
 export const categories: Category[] = [
   { slug: 'all', label: 'All Products', image: '' },
-  { slug: 'polos', label: 'Knit Polos', image: '/products/polo-navy.jpg' },
-  { slug: 't-shirts', label: 'T-Shirts', image: '/products/tee-brown.jpg' },
-  { slug: 'striped-tees', label: 'Striped Tees', image: '/products/tee-stripe-grey.jpg' },
-  { slug: 'knitwear', label: 'Knitwear', image: '/products/sweater-white.jpg' },
+  { slug: 'polos', label: 'Knit Polos', image: '/products/polo-navy.webp' },
+  { slug: 't-shirts', label: 'T-Shirts', image: '/products/tee-brown.webp' },
+  { slug: 'striped-tees', label: 'Striped Tees', image: '/products/tee-stripe-grey.webp' },
+  { slug: 'knitwear', label: 'Knitwear', image: '/products/sweater-white.webp' },
 ];
 
 export type CategorySlug = 'all' | 'polos' | 't-shirts' | 'striped-tees' | 'knitwear';

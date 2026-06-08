@@ -6,10 +6,10 @@ async function seed() {
 
   // 1. Insert categories
   const categoryData = [
-    { slug: 'polos', label: 'Knit Polos', image: '/products/polo-navy.jpg', sort_order: 1 },
-    { slug: 't-shirts', label: 'T-Shirts', image: '/products/tee-brown.jpg', sort_order: 2 },
-    { slug: 'striped-tees', label: 'Striped Tees', image: '/products/tee-stripe-grey.jpg', sort_order: 3 },
-    { slug: 'knitwear', label: 'Knitwear', image: '/products/sweater-white.jpg', sort_order: 4 },
+    { slug: 'polos', label: 'Knit Polos', image: '/products/polo-navy.webp', sort_order: 1 },
+    { slug: 't-shirts', label: 'T-Shirts', image: '/products/tee-brown.webp', sort_order: 2 },
+    { slug: 'striped-tees', label: 'Striped Tees', image: '/products/tee-stripe-grey.webp', sort_order: 3 },
+    { slug: 'knitwear', label: 'Knitwear', image: '/products/sweater-white.webp', sort_order: 4 },
   ];
 
   const { data: insertedCategories, error: catError } = await client
