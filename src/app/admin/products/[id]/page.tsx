@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Trash2, Plus, X, Upload } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Plus, X, Upload, EyeOff } from 'lucide-react';
 import { adminFetch } from '@/lib/admin-fetch';
 
 interface ProductDetail {
@@ -115,12 +115,33 @@ export default function AdminProductDetailPage() {
     setSaving(false);
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Deactivate this product?')) return;
+  const handleDeactivate = async () => {
+    if (!confirm('Deactivate this product? It will be hidden from the public site but kept in the admin.')) return;
     const res = await adminFetch(`/api/admin/products/${id}`, { method: 'DELETE' });
     if (res.ok) {
       router.push('/admin/products');
+      return;
     }
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    alert(`Failed to deactivate: ${err.error ?? res.statusText ?? 'Unknown error'}`);
+  };
+
+  const handleHardDelete = async () => {
+    if (!product) return;
+    if (!confirm(`PERMANENTLY delete "${product.name}"? This removes the product, all its images from storage, and cannot be undone.`)) return;
+    if (!confirm('Last warning: this is irreversible. Continue?')) return;
+    const res = await adminFetch(`/api/admin/products/${id}?hard=true`, { method: 'DELETE' });
+    if (res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { storageRemoved?: number; storageError?: string };
+      const tail = body.storageError
+        ? `\nStorage cleanup warning: ${body.storageError}`
+        : '';
+      alert(`Product permanently deleted. ${body.storageRemoved ?? 0} image file(s) removed from storage.${tail}`);
+      router.push('/admin/products');
+      return;
+    }
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    alert(`Failed to delete: ${err.error ?? res.statusText ?? 'Unknown error'}`);
   };
 
   const handleImageUpload = async (files: FileList | null) => {
@@ -197,11 +218,18 @@ export default function AdminProductDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleDelete}
+            onClick={handleDeactivate}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-amber-700 hover:bg-amber-50 rounded-md transition-colors"
+          >
+            <EyeOff className="w-4 h-4" />
+            Deactivate
+          </button>
+          <button
+            onClick={handleHardDelete}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
           >
             <Trash2 className="w-4 h-4" />
-            Deactivate
+            Delete permanently
           </button>
           <button
             onClick={handleSave}

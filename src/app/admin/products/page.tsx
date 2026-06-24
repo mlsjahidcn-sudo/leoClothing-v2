@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 import { adminFetch } from '@/lib/admin-fetch';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
@@ -40,12 +40,48 @@ export default function AdminProductsPage() {
       .finally(() => setLoading(false));
   }, [debouncedSearch, categoryFilter]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to deactivate this product?')) return;
+  /**
+   * Deactivate (soft delete) a product. Sets is_active=false; the row
+   * disappears from the public site immediately and is hidden from this
+   * list view too, so the admin gets visual feedback. The DB row stays
+   * (so the SKU / history isn't lost); flip is_active=true via Edit to
+   * bring it back.
+   */
+  const handleDeactivate = async (id: string) => {
+    if (!confirm('Deactivate this product? It will be hidden from the public site but kept in the admin.')) return;
     const res = await adminFetch(`/api/admin/products/${id}`, { method: 'DELETE' });
     if (res.ok) {
+      // Optimistic: drop from the list. If the user wants the row back
+      // they can flip is_active=true via the Edit page.
       setProducts((prev) => prev.filter((p) => p.id !== id));
+      return;
     }
+    // Without this branch the user clicks trash, nothing happens,
+    // nothing is logged — they assume the action didn't take.
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    alert(`Failed to deactivate: ${err.error ?? res.statusText ?? 'Unknown error'}`);
+  };
+
+  /**
+   * Permanently delete a product. Two-step confirmation because this
+   * removes the row + sub-table rows + storage files for good. Use
+   * only when a product was added by mistake or has no sales history.
+   */
+  const handleHardDelete = async (id: string, name: string) => {
+    if (!confirm(`PERMANENTLY delete "${name}"? This removes the product, all its images from storage, and cannot be undone.`)) return;
+    if (!confirm('Last warning: this is irreversible. Continue?')) return;
+    const res = await adminFetch(`/api/admin/products/${id}?hard=true`, { method: 'DELETE' });
+    if (res.ok) {
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      const body = (await res.json().catch(() => ({}))) as { storageRemoved?: number; storageError?: string };
+      const tail = body.storageError
+        ? ` (storage cleanup warning: ${body.storageError})`
+        : '';
+      alert(`Product permanently deleted. ${body.storageRemoved ?? 0} image file(s) removed from storage.${tail}`);
+      return;
+    }
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    alert(`Failed to delete: ${err.error ?? res.statusText ?? 'Unknown error'}`);
   };
 
   // Optimistic toggle: flip the badge instantly, roll back on failure.
@@ -199,9 +235,17 @@ export default function AdminProductsPage() {
                           <Pencil className="w-4 h-4" />
                         </Link>
                         <button
-                          onClick={() => handleDelete(p.id)}
+                          onClick={() => handleDeactivate(p.id)}
+                          className="p-1.5 text-gray-400 hover:text-amber-600 transition-colors"
+                          title="Deactivate (hide from public site)"
+                        >
+                          {/* EyeOff signals "stop showing" — distinct from delete */}
+                          <EyeOff className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleHardDelete(p.id, p.name)}
                           className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Deactivate"
+                          title="Delete permanently"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

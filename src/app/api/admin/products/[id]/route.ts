@@ -160,13 +160,81 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   if (!auth.ok) return auth.response;
 
   const { id } = await params;
-  const { error } = await auth.supabase
+  const { searchParams } = new URL(request.url);
+  // Default is soft-delete (sets is_active=false). Pass ?hard=true to
+  // actually remove the row, its sub-table rows, and its storage files.
+  // Sub-table rows cascade automatically via the FK `on delete cascade`
+  // declared in 0001_init.sql.
+  const hard = searchParams.get('hard') === 'true';
+
+  if (!hard) {
+    const { data, error } = await auth.supabase
+      .from('products')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id, is_active')
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    return NextResponse.json({ success: true, mode: 'soft', product: data });
+  }
+
+  // Hard delete — gather image paths first so we can clean storage after
+  // the DB row goes (we can't read the urls after the cascade fires).
+  const { data: images } = await auth.supabase
+    .from('product_images')
+    .select('url')
+    .eq('product_id', id);
+
+  // Extract storage paths from public URLs. The bucket name is fixed
+  // and the public URL always has the shape
+  //   <host>/storage/v1/object/public/product-images/<path>
+  // Anything that doesn't match (e.g. a /products/foo.webp local asset)
+  // is skipped — it's not in our bucket.
+  const bucketPrefix = '/storage/v1/object/public/product-images/';
+  const storagePaths = (images ?? [])
+    .map((img) => img.url)
+    .filter((u): u is string => typeof u === 'string' && u.includes(bucketPrefix))
+    .map((u) => u.split(bucketPrefix)[1]?.split('?')[0])
+    .filter((p): p is string => typeof p === 'string' && p.length > 0);
+
+  const { error: deleteError } = await auth.supabase
     .from('products')
-    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .delete()
     .eq('id', id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true });
+  if (deleteError) {
+    return NextResponse.json({ error: deleteError.message }, { status: 500 });
+  }
+
+  // Storage cleanup is best-effort — log failures but don't fail the
+  // delete. Orphan files are recoverable via a periodic sweep script
+  // and aren't worth a 500 to the user. Use the admin client because
+  // storage RLS is separate from `products` RLS and we want to remove
+  // anything under the product's folder regardless of which admin
+  // uploaded it.
+  let storageRemoved = 0;
+  let storageError: string | undefined;
+  if (storagePaths.length) {
+    try {
+      const { getAdminSupabase } = await import('@/lib/supabase/admin');
+      const { error: rmErr, data: rmData } = await getAdminSupabase()
+        .storage.from('product-images')
+        .remove(storagePaths);
+      if (rmErr) storageError = rmErr.message;
+      else storageRemoved = rmData?.length ?? 0;
+    } catch (e) {
+      storageError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    mode: 'hard',
+    storageRemoved,
+    storageError,
+  });
 }
 
 // PATCH — partial update. Currently supports only the boolean flags
