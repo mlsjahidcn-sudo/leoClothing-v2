@@ -67,7 +67,7 @@ export default async function ProductsPage({
       </section>
 
       <Suspense fallback={null}>
-        <ProductsList initialProducts={products} categories={categories} initialCategory={category ?? 'all'} />
+        <ProductsList initialProducts={products} categories={categories} />
       </Suspense>
 
       {/* CTA */}

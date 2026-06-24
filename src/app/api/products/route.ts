@@ -11,10 +11,17 @@ export async function GET(request: NextRequest) {
   const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '12', 10)));
 
   const supabase = getServerSupabase();
+  // Note: `categories!inner` is REQUIRED when filtering on a joined
+  // column (PostgREST silently ignores `.eq('categories.slug', ...)`
+  // on a left join — verified empirically on this project, see
+  // db-queries.ts). The bare `categories(...)` form is a LEFT JOIN,
+  // so the filter below would no-op and every category query would
+  // return the full active catalog. Same comment exists in
+  // db-queries.ts; keep both in sync.
   let query = supabase
     .from('products')
     .select(
-      '*, categories(slug, label), product_images(url, sort_order), product_bulk_pricing(min_qty, max_qty, unit_price), product_colors(name, hex), product_sizes(size_label, sort_order), product_size_chart(size, chest, waist, hip, length, sleeve), product_materials(fabric, lining, craft), product_design_details(detail_text, sort_order), product_certifications(cert_name)',
+      '*, categories!inner(slug, label), product_images(url, sort_order), product_bulk_pricing(min_qty, max_qty, unit_price), product_colors(name, hex), product_sizes(size_label, sort_order), product_size_chart(size, chest, waist, hip, length, sleeve), product_materials(fabric, lining, craft), product_design_details(detail_text, sort_order), product_certifications(cert_name)',
       { count: 'exact' },
     )
     .eq('is_active', true)

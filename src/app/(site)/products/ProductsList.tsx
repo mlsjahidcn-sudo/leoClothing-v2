@@ -1,42 +1,52 @@
 'use client';
 
 /**
- * Client-side filter + sort for the /products page.
+ * Client-side sort for the /products page.
  *
- * The page (page.tsx) is a server component that fetches the initial
- * product list and passes it here. We re-sort and re-filter in memory
- * when the user picks a different sort or category — no extra fetch
- * unless the user picks a different category, which navigates to a
- * new URL and triggers a fresh RSC render with the right data.
+ * The page (page.tsx) is a server component that fetches the product
+ * list filtered by the `?category=` URL param and passes it here. When
+ * the user picks a different category we navigate to a new URL, the RSC
+ * re-runs server-side, and a fresh filtered list streams in. The sort
+ * dropdown is the only thing that mutates client-side.
+ *
+ * The product list and active-category highlight are DERIVED directly
+ * from props + useSearchParams — never copied into local state. Earlier
+ * versions did `useState(initialProducts)` which captured the first
+ * server payload forever: category clicks updated the URL and the
+ * highlight but the grid stayed on whatever the first page-load returned.
+ * That was the "filter is not working" bug.
  */
 import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ProductCard from '@/components/ProductCard';
-import type { Product, Category, CategorySlug } from '@/lib/products';
+import type { Product, Category } from '@/lib/products';
 
 type SortKey = 'default' | 'price-asc' | 'price-desc' | 'moq';
 
 export default function ProductsList({
   initialProducts,
   categories,
-  initialCategory,
 }: {
   initialProducts: Product[];
   categories: Category[];
-  initialCategory: string;
+  // `initialCategory` is intentionally unused — the URL is the source of
+  // truth for the active highlight (see useSearchParams below). Keeping
+  // the prop in the signature would silently shadow the URL state.
+  initialCategory?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sortBy, setSortBy] = useState<SortKey>('default');
-  const [products] = useState<Product[]>(initialProducts);
-  // Mirror initialCategory into local state so the active-tab highlight
-  // updates immediately on click, before the server roundtrip resolves.
-  const [activeCategory, setActiveCategory] = useState<string>(initialCategory);
+
+  // Derive the active category from the URL on every render. Falls back
+  // to 'all' when no ?category= is present. This stays in sync with
+  // browser back/forward and direct deep links without any local mirror.
+  const activeCategory = searchParams.get('category') ?? 'all';
 
   const filteredProducts = useMemo(() => {
     // The server already filtered by category (it's in the URL). Local
     // sort is the only client-side transform.
-    const result = [...products];
+    const result = [...initialProducts];
     switch (sortBy) {
       case 'price-asc':
         result.sort((a, b) => a.wholesalePrice - b.wholesalePrice);
@@ -49,15 +59,14 @@ export default function ProductsList({
         break;
     }
     return result;
-  }, [products, sortBy]);
+  }, [initialProducts, sortBy]);
 
   const handleCategoryClick = (slug: string) => {
-    setActiveCategory(slug);
     // Update the URL — the server component re-runs with the new
-    // ?category= param, so the RSC fetch is filtered server-side
-    // (using the categories!inner join fix from earlier) and the
-    // fresh product list streams in. Search-engines see real,
-    // indexable URLs for each category.
+    // ?category= param, the RSC fetch is filtered server-side via the
+    // categories!inner join, and the fresh product list streams in as
+    // a new `initialProducts` prop. Search-engines see real, indexable
+    // URLs for each category.
     const params = new URLSearchParams(searchParams.toString());
     if (slug === 'all') {
       params.delete('category');
