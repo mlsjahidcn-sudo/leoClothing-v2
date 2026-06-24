@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Package, FileText, Users, DollarSign, ArrowRight, Clock, AlertCircle, CheckCircle2, XCircle, UserCheck, Handshake, TrendingUp, RefreshCw } from 'lucide-react';
 import { adminFetch } from '@/lib/admin-fetch';
@@ -54,6 +54,16 @@ export default function AdminDashboardPage() {
   // Poll every 30s. Pause on tab blur so a backgrounded admin tab
   // doesn't burn Supabase quota. Bump "last updated" only when the
   // data actually changes (otherwise the pill says "0s ago" forever).
+  // Tick state forces a re-render every second so the "Updated Xs ago"
+  // pill actually increments. Without this the value freezes at whatever
+  // time React last painted — the original code computed Date.now() in
+  // render but the render only re-fires on data change, not on time.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const { data, loading, lastUpdated, refresh } = usePollingFetch<DashboardData>({
     fetcher: async () => {
       const res = await adminFetch('/api/admin/dashboard');
@@ -86,6 +96,8 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-3 text-xs text-gray-400">
           {lastUpdated && (
             <span>
+              {/* eslint-disable-next-line react-hooks/purity -- setTick above forces
+                  a re-render every second so Date.now() updates correctly. */}
               Updated {Math.max(0, Math.floor((Date.now() - lastUpdated) / 1000))}s ago
             </span>
           )}

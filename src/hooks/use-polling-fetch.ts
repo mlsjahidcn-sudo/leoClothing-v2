@@ -64,7 +64,10 @@ export function usePollingFetch<T>({
     const start = () => {
       if (timer) return;
       timer = setInterval(() => {
-        if (typeof document !== 'undefined' && document.hidden) return;
+        // useEffect only runs client-side, so `document` is always defined
+        // here — no need to guard with typeof. Kept the dead-defensive
+        // code out for clarity.
+        if (document.hidden) return;
         run();
       }, intervalMs);
     };

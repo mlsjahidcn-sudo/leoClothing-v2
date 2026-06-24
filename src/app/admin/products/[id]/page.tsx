@@ -22,14 +22,19 @@ interface ProductDetail {
   is_active: boolean;
   category_id: number;
   categories: { slug: string; label: string } | null;
-  product_images: { id: number; url: string; sort_order: number }[];
-  product_bulk_pricing: { id: number; min_qty: number; max_qty: number | null; unit_price: string }[];
-  product_colors: { id: number; name: string; hex: string }[];
-  product_sizes: { id: number; size_label: string; sort_order: number }[];
-  product_size_chart: { id: number; size: string; chest: number; waist: number; hip: number; length: number; sleeve: number }[];
-  product_materials: { id: number; fabric: string; lining: string; craft: string }[];
-  product_design_details: { id: number; detail_text: string; sort_order: number }[];
-  product_certifications: { id: number; cert_name: string }[];
+  // Sub-table rows use `number | string` for `id` because locally-added
+  // (not-yet-persisted) rows have a `crypto.randomUUID()` string id,
+  // while rows fetched from Supabase have a numeric `id`. The PUT
+  // handler ignores `id` on inserts so the mismatch never reaches the
+  // server.
+  product_images: { id: number | string; url: string; sort_order: number }[];
+  product_bulk_pricing: { id: number | string; min_qty: number; max_qty: number | null; unit_price: string }[];
+  product_colors: { id: number | string; name: string; hex: string }[];
+  product_sizes: { id: number | string; size_label: string; sort_order: number }[];
+  product_size_chart: { id: number | string; size: string; chest: number; waist: number; hip: number; length: number; sleeve: number }[];
+  product_materials: { id: number | string; fabric: string; lining: string; craft: string }[];
+  product_design_details: { id: number | string; detail_text: string; sort_order: number }[];
+  product_certifications: { id: number | string; cert_name: string }[];
 }
 
 interface Category {
@@ -40,6 +45,17 @@ interface Category {
 
 const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent';
 const smallInputCls = 'px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent';
+
+// Stable, collision-free IDs for newly-added sub-table rows. Used to
+// be `Date.now()` (and `Date.now() + Math.random()`) which silently
+// collided when the user clicked "Add Tier" twice within the same
+// millisecond — React dropped one tier from the UI without explanation.
+// `crypto.randomUUID()` is universally available in browsers since 2022
+// and Server Components since Node 19; we don't need the polyfill.
+const newLocalId = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 export default function AdminProductDetailPage() {
   const params = useParams();
@@ -158,7 +174,7 @@ export default function AdminProductDetailPage() {
         if (res.ok) {
           const { url } = (await res.json()) as { url: string };
           newImages.push({
-            id: Date.now() + Math.floor(Math.random() * 1000),
+            id: newLocalId(),
             url,
             sort_order: newImages.length,
           });
@@ -183,7 +199,7 @@ export default function AdminProductDetailPage() {
     updateProduct({
       product_images: [
         ...(product?.product_images ?? []),
-        { id: Date.now(), url, sort_order: (product?.product_images.length ?? 0) },
+        { id: newLocalId(), url, sort_order: (product?.product_images.length ?? 0) },
       ],
     });
   };
@@ -340,7 +356,7 @@ export default function AdminProductDetailPage() {
               <h2 className="text-sm font-medium text-gray-900">Bulk Pricing Tiers</h2>
               <button
                 onClick={() => updateProduct({
-                  product_bulk_pricing: [...product.product_bulk_pricing, { id: Date.now(), min_qty: 0, max_qty: null, unit_price: '0' }]
+                  product_bulk_pricing: [...product.product_bulk_pricing, { id: newLocalId(), min_qty: 0, max_qty: null, unit_price: '0' }]
                 })}
                 className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
               >
@@ -397,7 +413,7 @@ export default function AdminProductDetailPage() {
               <h2 className="text-sm font-medium text-gray-900">Available Colors</h2>
               <button
                 onClick={() => updateProduct({
-                  product_colors: [...product.product_colors, { id: Date.now(), name: 'New Color', hex: '#000000' }]
+                  product_colors: [...product.product_colors, { id: newLocalId(), name: 'New Color', hex: '#000000' }]
                 })}
                 className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
               >
@@ -431,7 +447,7 @@ export default function AdminProductDetailPage() {
               <h2 className="text-sm font-medium text-gray-900">Available Sizes</h2>
               <button
                 onClick={() => updateProduct({
-                  product_sizes: [...product.product_sizes, { id: Date.now(), size_label: '', sort_order: product.product_sizes.length }]
+                  product_sizes: [...product.product_sizes, { id: newLocalId(), size_label: '', sort_order: product.product_sizes.length }]
                 })}
                 className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
               >
@@ -551,7 +567,7 @@ export default function AdminProductDetailPage() {
               </div>
             ))}
             <button onClick={() => updateProduct({
-              product_materials: [...product.product_materials, { id: Date.now(), fabric: '', lining: '', craft: '' }]
+              product_materials: [...product.product_materials, { id: newLocalId(), fabric: '', lining: '', craft: '' }]
             })} className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 mt-2">
               <Plus className="w-3.5 h-3.5" /> Add Material
             </button>
@@ -562,7 +578,7 @@ export default function AdminProductDetailPage() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-medium text-gray-900">Size Chart</h2>
               <button onClick={() => updateProduct({
-                product_size_chart: [...product.product_size_chart, { id: Date.now(), size: '', chest: 0, waist: 0, hip: 0, length: 0, sleeve: 0 }]
+                product_size_chart: [...product.product_size_chart, { id: newLocalId(), size: '', chest: 0, waist: 0, hip: 0, length: 0, sleeve: 0 }]
               })} className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900">
                 <Plus className="w-3.5 h-3.5" /> Add Size
               </button>
@@ -630,7 +646,7 @@ export default function AdminProductDetailPage() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-medium text-gray-900">Design Details</h2>
               <button onClick={() => updateProduct({
-                product_design_details: [...product.product_design_details, { id: Date.now(), detail_text: '', sort_order: product.product_design_details.length }]
+                product_design_details: [...product.product_design_details, { id: newLocalId(), detail_text: '', sort_order: product.product_design_details.length }]
               })} className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900">
                 <Plus className="w-3.5 h-3.5" /> Add Detail
               </button>
@@ -656,7 +672,7 @@ export default function AdminProductDetailPage() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-medium text-gray-900">Certifications</h2>
               <button onClick={() => updateProduct({
-                product_certifications: [...product.product_certifications, { id: Date.now(), cert_name: '' }]
+                product_certifications: [...product.product_certifications, { id: newLocalId(), cert_name: '' }]
               })} className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900">
                 <Plus className="w-3.5 h-3.5" /> Add Certification
               </button>

@@ -223,11 +223,16 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     router.push('/admin/login');
   }, [supabase, router]);
 
-  return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, session }}>
-      {children}
-    </AuthContext.Provider>
+  // Memoize the context value so consumers don't re-render on every
+  // parent render. Without this, every state change above (session,
+  // user, isLoading) recomputed the object identity and re-rendered
+  // every useAdminAuth() consumer — including AdminShell.
+  const value = useMemo<AuthContextValue>(
+    () => ({ user, isLoading, login, logout, session }),
+    [user, isLoading, login, logout, session],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAdminAuth(): AuthContextValue {

@@ -247,12 +247,19 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 >
                   Request Quote
                 </Link>
-                <Link
-                  href="/inquiry"
+                {/*
+                  Request Sample goes to email, not the RFQ form. The two
+                  are different intents — a sample request is a free
+                  individual unit to evaluate fit and finish, while an
+                  RFQ is a wholesale price negotiation. Sending "sample"
+                  clicks to the wholesale form gave the wrong impression.
+                */}
+                <a
+                  href={`mailto:info@chengfenginternational.com?subject=${encodeURIComponent(`Sample request: ${product.name} (${product.sku})`)}`}
                   className="flex-1 inline-flex items-center justify-center px-6 py-3.5 border border-[#B8956A] text-[#B8956A] text-sm tracking-[0.08em] uppercase hover:bg-[#B8956A] hover:text-white transition-colors"
                 >
                   Request Sample
-                </Link>
+                </a>
               </div>
             </div>
           </div>

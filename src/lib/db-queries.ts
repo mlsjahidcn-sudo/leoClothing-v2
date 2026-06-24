@@ -33,11 +33,32 @@ interface DbProduct {
   product_certifications: { cert_name: string }[];
 }
 
-export function mapDbProduct(p: DbProduct): Product {
+// Known category slugs. Used to validate `categories.slug` before
+// casting it to the `ProductCategory` union — a missing or unknown
+// slug used to silently coerce to 'polos' which is a data-corruption
+// foot-gun (a product whose FK got deleted would appear in the Polos
+// filter). Now such rows are dropped at the mapper boundary so they
+// never reach the UI.
+const KNOWN_CATEGORY_SLUGS = new Set<string>([
+  'polos', 't-shirts', 'striped-tees', 'knitwear',
+]);
+
+export function mapDbProduct(p: DbProduct): Product | null {
+  // Drop products whose category is missing or not in the known set.
+  // Callers should filter nulls (see getAllProducts below).
+  if (!p.categories || !KNOWN_CATEGORY_SLUGS.has(p.categories.slug)) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(
+        `[mapDbProduct] dropping product ${p.id} (${p.name ?? '?'}): ` +
+        `unknown or missing category slug "${p.categories?.slug ?? '(null)'}"`,
+      );
+    }
+    return null;
+  }
   return {
     id: p.id,
     name: p.name,
-    category: (p.categories?.slug || 'polos') as ProductCategory,
+    category: p.categories.slug as ProductCategory,
     series: p.series,
     sku: p.sku,
     images: p.product_images?.sort((a, b) => a.sort_order - b.sort_order).map((i) => i.url) || [],
@@ -140,7 +161,11 @@ export async function getAllProducts(options?: {
 
   const { data, error } = await query;
   if (error || !data) return [];
-  return (data as unknown as DbProduct[]).map(mapDbProduct);
+  // mapDbProduct can now return null (unknown / missing category);
+  // filter those out so callers only see well-formed products.
+  return (data as unknown as DbProduct[])
+    .map(mapDbProduct)
+    .filter((p): p is Product => p !== null);
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
@@ -156,10 +181,22 @@ export async function getProductById(id: string): Promise<Product | null> {
   return mapDbProduct(data as unknown as DbProduct);
 }
 
-export async function getFeaturedProducts(): Promise<Product[]> {
-  return getAllProducts({ featured: true });
+export async function getFeaturedProducts(options?: { limit?: number }): Promise<Product[]> {
+  return getAllProducts({ featured: true, limit: options?.limit });
 }
 
-export async function getProductsByCategory(category: string): Promise<Product[]> {
-  return getAllProducts({ category });
+export async function getProductsByCategory(
+  category: string,
+  options?: { limit?: number; excludeId?: string },
+): Promise<Product[]> {
+  // When an excludeId is provided, we fetch limit+1 so the post-filter
+  // still has enough rows after removing the current product. Slightly
+  // over-fetches in the rare edge case where the current product is in
+  // the top N, but saves a round trip vs. a two-step query.
+  const wantLimit = options?.limit ?? options?.excludeId ? (options.limit ?? 3) + 1 : undefined;
+  const products = await getAllProducts({ category, limit: wantLimit });
+  const filtered = options?.excludeId
+    ? products.filter((p) => p.id !== options.excludeId)
+    : products;
+  return options?.limit ? filtered.slice(0, options.limit) : filtered;
 }

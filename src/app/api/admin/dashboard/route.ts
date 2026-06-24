@@ -1,34 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin-auth';
 
+// Status enums kept here (not in a shared file) because they're a
+// dashboard-widget concern, not a domain concept — adding a new lead
+// status means updating both this widget and admin/leads. If we ever
+// have a third call site, promote to a const.
+const RFQ_STATUSES = ['new', 'reviewing', 'quoted', 'closed'] as const;
+const LEAD_STATUSES = [
+  'new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost',
+] as const;
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (!auth.ok) return auth.response;
 
   const { supabase } = auth;
 
+  // One parallel query per status — PostgREST returns a cheap `count`
+  // with head:true, so 11 queries is still tiny. Alternative was an
+  // SQL RPC returning one row per status; we'd need a migration for
+  // that, and this works without one.
+  const buildStatusCounts = <T extends string>(
+    statuses: readonly T[],
+    table: 'rfqs' | 'leads',
+  ): Promise<Record<T, number>> => {
+    return Promise.all(
+      statuses.map((status) =>
+        supabase
+          .from(table)
+          .select('*', { count: 'exact', head: true })
+          .eq('status', status)
+          .then(({ count }) => [status, count ?? 0] as const),
+      ),
+    ).then((entries) => Object.fromEntries(entries) as Record<T, number>);
+  };
+
   const [
     productsCount,
     categoriesCount,
     rfqTotal,
     leadTotal,
-    leadValueAgg,
+    leadValueSum,
     recentRfqs,
     recentLeads,
+    rfqCounts,
+    leadCounts,
   ] = await Promise.all([
     supabase
       .from('products')
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true),
     supabase.from('categories').select('*', { count: 'exact', head: true }),
-    // Use `count: 'exact', head: true` for the totals — we don't need
-    // the actual rows just to count them. Saves a full table scan over
-    // the wire on every dashboard load.
     supabase.from('rfqs').select('*', { count: 'exact', head: true }),
     supabase.from('leads').select('*', { count: 'exact', head: true }),
-    // Sum pipeline value server-side via RPC would be ideal; until we
-    // add a SQL function, fetch just the column we need (much smaller
-    // payload than select('*')).
+    // Sum pipeline value server-side. PostgREST doesn't expose SUM()
+    // directly through the JS client's `select`, so we still pull the
+    // column and aggregate in JS — but only one numeric column, not
+    // full rows. Replace with an RPC when the table grows.
     supabase.from('leads').select('estimated_value'),
     supabase
       .from('rfqs')
@@ -40,27 +68,12 @@ export async function GET(request: NextRequest) {
       .select('id, company_name, contact_person, email, status, estimated_value, created_at')
       .order('created_at', { ascending: false })
       .limit(5),
+    buildStatusCounts(RFQ_STATUSES, 'rfqs'),
+    buildStatusCounts(LEAD_STATUSES, 'leads'),
   ]);
 
-  // For the per-status breakdown we still need the status column, but only
-  // for the last 5 RFQs and leads we already fetched above — that gives
-  // us "recent activity" counts cheaply. For an accurate count by status
-  // we'd need a SQL aggregation function; defer until the table is large
-  // enough to notice.
-  const rfqCounts: Record<string, number> = { new: 0, reviewing: 0, quoted: 0, closed: 0 };
-  for (const r of recentRfqs.data ?? []) {
-    if (r.status in rfqCounts) rfqCounts[r.status]++;
-  }
-
-  const leadCounts: Record<string, number> = {
-    new: 0, contacted: 0, qualified: 0, proposal: 0, negotiation: 0, won: 0, lost: 0,
-  };
-  for (const l of recentLeads.data ?? []) {
-    if (l.status in leadCounts) leadCounts[l.status]++;
-  }
-
   let totalLeadValue = 0;
-  for (const lv of leadValueAgg.data ?? []) {
+  for (const lv of leadValueSum.data ?? []) {
     if (lv.estimated_value) totalLeadValue += Number(lv.estimated_value);
   }
 

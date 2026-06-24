@@ -59,10 +59,24 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
-      // 5-minute cache for the public catalog API + a 1-minute
-      // SWR window. Catalog data is server-rendered and revalidated
-      // every 60s anyway; this just lets CDN edge nodes hold onto
-      // it briefly. Admin APIs (under /api/admin/*) get no-store.
+      // Public catalog APIs (no auth required) get a 5-minute cache + 1-minute
+      // SWR window. Catalog data is server-rendered and revalidated every
+      // 60s anyway; this just lets CDN edge nodes hold onto it briefly.
+      // Admin APIs (under /api/admin/*) get no-store so a stale session
+      // token can't leak across cache boundaries.
+      {
+        source: '/api/products/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=300, stale-while-revalidate=60' }],
+      },
+      {
+        source: '/api/categories/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=300, stale-while-revalidate=60' }],
+      },
+      {
+        source: '/api/admin/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
+      // Anything else under /api/ (e.g. /api/rfqs) is also no-store.
       {
         source: '/api/:path*',
         headers: [{ key: 'Cache-Control', value: 'no-store' }],

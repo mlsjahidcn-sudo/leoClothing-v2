@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 
@@ -53,8 +53,12 @@ const ACTIVITY_TYPES = [
   { value: 'status_change', label: 'Status Change', icon: '🔄' },
 ];
 
-export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const [leadId, setLeadId] = useState<string>('');
+export default function LeadDetailPage() {
+  // In a client component, `params` arrives as a plain object — receiving
+  // it as a Promise (server-component pattern) means .then() never
+  // resolves and the page sticks on "Lead not found". Use useParams().
+  const params = useParams<{ id: string }>();
+  const leadId = params?.id ?? '';
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -64,10 +68,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    params.then(p => setLeadId(p.id));
-  }, [params]);
 
   useEffect(() => {
     if (lead?.created_at) {
@@ -249,7 +249,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Next Follow Up</label>
-                  <input type="date" value={editData.next_follow_up ? editData.next_follow_up.split('T')[0] : ''} onChange={e => setEditData({...editData, next_follow_up: e.target.value ? new Date(e.target.value).toISOString() : null})} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#B8956A]/30" />
+                  <input type="date" value={editData.next_follow_up ? editData.next_follow_up.split('T')[0] : ''} onChange={e => setEditData({...editData, next_follow_up: e.target.value ? new Date(`${e.target.value}T00:00:00`).toISOString() : null})} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#B8956A]/30" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs text-gray-500 mb-1">Products Interest</label>

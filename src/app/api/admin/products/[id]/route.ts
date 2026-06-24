@@ -65,89 +65,76 @@ export async function PUT(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  // Sync sub-tables if provided. Each block is independent so a
-  // single failure doesn't take down the rest of the update.
-  const childErrors: string[] = [];
-  if (data.images) {
-    const { error: delError } = await supabase.from('product_images').delete().eq('product_id', id);
-    if (delError) childErrors.push(`images delete: ${delError.message}`);
-    else if (data.images.length) {
-      const { error } = await supabase
-        .from('product_images')
-        .insert(data.images.map((img, i) => ({ product_id: id, url: img.url, sort_order: img.sort_order ?? i })));
-      if (error) childErrors.push(`images insert: ${error.message}`);
+  // Sync sub-tables in parallel. Each sub-table still does its own
+  // delete-then-insert sequence (the delete is a precondition for the
+  // insert — re-inserting without clearing would conflict on the
+  // implicit uniqueness assumptions the form relies on), but unrelated
+  // sub-tables now fan out. Was 16 sequential round trips; now 8 in
+  // parallel = 1 wall-clock RTT.
+  const syncSubTable = async (
+    tableName: string,
+    rows: ReadonlyArray<Record<string, unknown>> | undefined,
+    mapRow: (row: Record<string, unknown>, index: number) => Record<string, unknown>,
+  ): Promise<string[]> => {
+    if (!rows) return [];
+    const errors: string[] = [];
+    const { error: delError } = await supabase.from(tableName).delete().eq('product_id', id);
+    if (delError) {
+      errors.push(`${tableName} delete: ${delError.message}`);
+      return errors;
     }
-  }
-  if (data.bulk_pricing) {
-    const { error: delError } = await supabase.from('product_bulk_pricing').delete().eq('product_id', id);
-    if (delError) childErrors.push(`bulk_pricing delete: ${delError.message}`);
-    else if (data.bulk_pricing.length) {
-      const { error } = await supabase.from('product_bulk_pricing').insert(
-        data.bulk_pricing.map((b) => ({ product_id: id, min_qty: b.min_qty, max_qty: b.max_qty ?? null, unit_price: b.unit_price })),
-      );
-      if (error) childErrors.push(`bulk_pricing insert: ${error.message}`);
-    }
-  }
-  if (data.colors) {
-    const { error: delError } = await supabase.from('product_colors').delete().eq('product_id', id);
-    if (delError) childErrors.push(`colors delete: ${delError.message}`);
-    else if (data.colors.length) {
-      const { error } = await supabase.from('product_colors').insert(
-        data.colors.map((c) => ({ product_id: id, name: c.name, hex: c.hex })),
-      );
-      if (error) childErrors.push(`colors insert: ${error.message}`);
-    }
-  }
-  if (data.sizes) {
-    const { error: delError } = await supabase.from('product_sizes').delete().eq('product_id', id);
-    if (delError) childErrors.push(`sizes delete: ${delError.message}`);
-    else if (data.sizes.length) {
-      const { error } = await supabase.from('product_sizes').insert(
-        data.sizes.map((s, i) => ({ product_id: id, size_label: s.size_label, sort_order: s.sort_order ?? i })),
-      );
-      if (error) childErrors.push(`sizes insert: ${error.message}`);
-    }
-  }
-  if (data.size_chart) {
-    const { error: delError } = await supabase.from('product_size_chart').delete().eq('product_id', id);
-    if (delError) childErrors.push(`size_chart delete: ${delError.message}`);
-    else if (data.size_chart.length) {
-      const { error } = await supabase.from('product_size_chart').insert(
-        data.size_chart.map((sc) => ({ product_id: id, ...sc })),
-      );
-      if (error) childErrors.push(`size_chart insert: ${error.message}`);
-    }
-  }
-  if (data.materials) {
-    const { error: delError } = await supabase.from('product_materials').delete().eq('product_id', id);
-    if (delError) childErrors.push(`materials delete: ${delError.message}`);
-    else if (data.materials.length) {
-      const { error } = await supabase.from('product_materials').insert(
-        data.materials.map((m) => ({ product_id: id, ...m })),
-      );
-      if (error) childErrors.push(`materials insert: ${error.message}`);
-    }
-  }
-  if (data.design_details) {
-    const { error: delError } = await supabase.from('product_design_details').delete().eq('product_id', id);
-    if (delError) childErrors.push(`design_details delete: ${delError.message}`);
-    else if (data.design_details.length) {
-      const { error } = await supabase.from('product_design_details').insert(
-        data.design_details.map((d, i) => ({ product_id: id, detail_text: d.detail_text, sort_order: d.sort_order ?? i })),
-      );
-      if (error) childErrors.push(`design_details insert: ${error.message}`);
-    }
-  }
-  if (data.certifications) {
-    const { error: delError } = await supabase.from('product_certifications').delete().eq('product_id', id);
-    if (delError) childErrors.push(`certifications delete: ${delError.message}`);
-    else if (data.certifications.length) {
-      const { error } = await supabase.from('product_certifications').insert(
-        data.certifications.map((c) => ({ product_id: id, cert_name: c.cert_name })),
-      );
-      if (error) childErrors.push(`certifications insert: ${error.message}`);
-    }
-  }
+    if (!rows.length) return errors;
+    // Cast through `never` to bypass the per-table typed insert. The
+    // `tableName` is a string parameter here (we removed the union
+    // constraint to allow the helper to be shared across all 8 sub-
+    // tables), but each call site's `mapRow` returns the right shape
+    // for the corresponding table — see the call sites below.
+    const payload = rows.map((r, i) => ({ product_id: id, ...mapRow(r, i) })) as never;
+    const { error: insError } = await supabase.from(tableName).insert(payload as never);
+    if (insError) errors.push(`${tableName} insert: ${insError.message}`);
+    return errors;
+  };
+
+  const childErrorsNested = await Promise.all([
+    syncSubTable('product_images', data.images as ReadonlyArray<Record<string, unknown>> | undefined, (r, i) => ({
+      url: r.url,
+      sort_order: (r.sort_order as number | undefined) ?? i,
+    })),
+    syncSubTable('product_bulk_pricing', data.bulk_pricing as ReadonlyArray<Record<string, unknown>> | undefined, (r) => ({
+      min_qty: r.min_qty,
+      max_qty: (r.max_qty as number | null | undefined) ?? null,
+      unit_price: r.unit_price,
+    })),
+    syncSubTable('product_colors', data.colors as ReadonlyArray<Record<string, unknown>> | undefined, (r) => ({
+      name: r.name,
+      hex: r.hex,
+    })),
+    syncSubTable('product_sizes', data.sizes as ReadonlyArray<Record<string, unknown>> | undefined, (r, i) => ({
+      size_label: r.size_label,
+      sort_order: (r.sort_order as number | undefined) ?? i,
+    })),
+    syncSubTable('product_size_chart', data.size_chart as ReadonlyArray<Record<string, unknown>> | undefined, (r) => ({
+      size: r.size,
+      chest: r.chest,
+      waist: r.waist,
+      hip: r.hip,
+      length: r.length,
+      sleeve: r.sleeve,
+    })),
+    syncSubTable('product_materials', data.materials as ReadonlyArray<Record<string, unknown>> | undefined, (r) => ({
+      fabric: r.fabric,
+      lining: r.lining,
+      craft: r.craft,
+    })),
+    syncSubTable('product_design_details', data.design_details as ReadonlyArray<Record<string, unknown>> | undefined, (r, i) => ({
+      detail_text: r.detail_text,
+      sort_order: (r.sort_order as number | undefined) ?? i,
+    })),
+    syncSubTable('product_certifications', data.certifications as ReadonlyArray<Record<string, unknown>> | undefined, (r) => ({
+      cert_name: r.cert_name,
+    })),
+  ]);
+  const childErrors = childErrorsNested.flat();
 
   return NextResponse.json({
     success: true,
@@ -253,14 +240,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   // Whitelist — never let the client write to anything else here.
-  const patch: Record<string, boolean> = {};
+  // Type widened to allow the timestamp update we always append.
+  const patch: Record<string, boolean | string> = {};
   if (typeof body.is_active === 'boolean') patch.is_active = body.is_active;
   if (typeof body.is_featured === 'boolean') patch.is_featured = body.is_featured;
   if (typeof body.is_new === 'boolean') patch.is_new = body.is_new;
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'No supported fields to update' }, { status: 400 });
   }
-  patch.updated_at = new Date().toISOString() as unknown as boolean;
+  patch.updated_at = new Date().toISOString();
 
   const { id } = await params;
   const { data, error } = await auth.supabase

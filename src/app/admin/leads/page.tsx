@@ -53,6 +53,7 @@ export default function AdminLeadsPage() {
     company_name: '', contact_person: '', email: '', phone: '', country: '',
     source: 'manual', estimated_value: '', products_interest: '', notes: '',
   });
+  const [addLeadError, setAddLeadError] = useState<string | null>(null);
 
   // Debounce the search so a 5-char query is 1 API call, not 5.
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -72,14 +73,29 @@ export default function AdminLeadsPage() {
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
   const handleAddLead = async () => {
-    await adminFetch('/api/admin/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...newLead,
-        estimated_value: newLead.estimated_value || null,
-      }),
-    });
+    // Surface failures — without the `if (!res.ok)` branch, a network
+    // blip or duplicate-email 400 closed the modal and refreshed the
+    // list as if the lead had been added. The admin would assume the
+    // row is on the next page but never see it.
+    try {
+      const res = await adminFetch('/api/admin/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newLead,
+          estimated_value: newLead.estimated_value || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        setAddLeadError(err.error ?? `Failed to create lead (${res.status})`);
+        return;
+      }
+    } catch (e) {
+      setAddLeadError(e instanceof Error ? e.message : 'Network error');
+      return;
+    }
+    setAddLeadError(null);
     setShowAddModal(false);
     setNewLead({ company_name: '', contact_person: '', email: '', phone: '', country: '', source: 'manual', estimated_value: '', products_interest: '', notes: '' });
     fetchLeads();
@@ -135,7 +151,7 @@ export default function AdminLeadsPage() {
             Export CSV
           </button>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => { setShowAddModal(true); setAddLeadError(null); }}
             className="px-4 py-2 bg-[#B8956A] text-white rounded-md hover:bg-[#a07d55] transition-colors text-sm font-medium"
           >
             + Add Lead
@@ -245,6 +261,11 @@ export default function AdminLeadsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold mb-4">Add New Lead</h2>
+            {addLeadError && (
+              <div className="mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">
+                {addLeadError}
+              </div>
+            )}
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
@@ -290,7 +311,7 @@ export default function AdminLeadsPage() {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setShowAddModal(false)} className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Cancel</button>
+              <button onClick={() => { setShowAddModal(false); setAddLeadError(null); }} className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Cancel</button>
               <button onClick={handleAddLead} disabled={!newLead.company_name || !newLead.contact_person || !newLead.email} className="px-4 py-2 bg-[#B8956A] text-white rounded-md text-sm hover:bg-[#a07d55] disabled:opacity-50">Add Lead</button>
             </div>
           </div>

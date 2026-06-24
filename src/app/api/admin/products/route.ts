@@ -87,64 +87,76 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Insert sub-table rows. Each block is independent — we log and
-  // continue so a missing sub-table doesn't lose the product.
+  // Insert sub-table rows in parallel. Each block is independent — we
+  // log and continue so a missing sub-table doesn't lose the product,
+  // and Promise.all drops the wall-clock time from O(N×RTT) to O(RTT).
   const productId = product.id;
-  const childErrors: string[] = [];
-
-  if (data.images?.length) {
-    const { error } = await supabase
-      .from('product_images')
-      .insert(data.images.map((img, i) => ({ product_id: productId, url: img.url, sort_order: img.sort_order ?? i })));
-    if (error) childErrors.push(`images: ${error.message}`);
-  }
-  if (data.bulk_pricing?.length) {
-    const { error } = await supabase.from('product_bulk_pricing').insert(
-      data.bulk_pricing.map((b) => ({
-        product_id: productId,
-        min_qty: b.min_qty,
-        max_qty: b.max_qty ?? null,
-        unit_price: b.unit_price,
-      })),
-    );
-    if (error) childErrors.push(`bulk_pricing: ${error.message}`);
-  }
-  if (data.colors?.length) {
-    const { error } = await supabase.from('product_colors').insert(
-      data.colors.map((c) => ({ product_id: productId, name: c.name, hex: c.hex })),
-    );
-    if (error) childErrors.push(`colors: ${error.message}`);
-  }
-  if (data.sizes?.length) {
-    const { error } = await supabase.from('product_sizes').insert(
-      data.sizes.map((s, i) => ({ product_id: productId, size_label: s.size_label, sort_order: s.sort_order ?? i })),
-    );
-    if (error) childErrors.push(`sizes: ${error.message}`);
-  }
-  if (data.size_chart?.length) {
-    const { error } = await supabase.from('product_size_chart').insert(
-      data.size_chart.map((sc) => ({ product_id: productId, ...sc })),
-    );
-    if (error) childErrors.push(`size_chart: ${error.message}`);
-  }
-  if (data.materials?.length) {
-    const { error } = await supabase.from('product_materials').insert(
-      data.materials.map((m) => ({ product_id: productId, ...m })),
-    );
-    if (error) childErrors.push(`materials: ${error.message}`);
-  }
-  if (data.design_details?.length) {
-    const { error } = await supabase.from('product_design_details').insert(
-      data.design_details.map((d, i) => ({ product_id: productId, detail_text: d.detail_text, sort_order: d.sort_order ?? i })),
-    );
-    if (error) childErrors.push(`design_details: ${error.message}`);
-  }
-  if (data.certifications?.length) {
-    const { error } = await supabase.from('product_certifications').insert(
-      data.certifications.map((c) => ({ product_id: productId, cert_name: c.cert_name })),
-    );
-    if (error) childErrors.push(`certifications: ${error.message}`);
-  }
+  const childResults = await Promise.all([
+    data.images?.length
+      ? supabase
+          .from('product_images')
+          .insert(data.images.map((img, i) => ({ product_id: productId, url: img.url, sort_order: img.sort_order ?? i })))
+          .then(({ error }) => (error ? `images: ${error.message}` : null))
+      : null,
+    data.bulk_pricing?.length
+      ? supabase
+          .from('product_bulk_pricing')
+          .insert(
+            data.bulk_pricing.map((b) => ({
+              product_id: productId,
+              min_qty: b.min_qty,
+              max_qty: b.max_qty ?? null,
+              unit_price: b.unit_price,
+            })),
+          )
+          .then(({ error }) => (error ? `bulk_pricing: ${error.message}` : null))
+      : null,
+    data.colors?.length
+      ? supabase
+          .from('product_colors')
+          .insert(data.colors.map((c) => ({ product_id: productId, name: c.name, hex: c.hex })))
+          .then(({ error }) => (error ? `colors: ${error.message}` : null))
+      : null,
+    data.sizes?.length
+      ? supabase
+          .from('product_sizes')
+          .insert(
+            data.sizes.map((s, i) => ({ product_id: productId, size_label: s.size_label, sort_order: s.sort_order ?? i })),
+          )
+          .then(({ error }) => (error ? `sizes: ${error.message}` : null))
+      : null,
+    data.size_chart?.length
+      ? supabase
+          .from('product_size_chart')
+          .insert(data.size_chart.map((sc) => ({ product_id: productId, ...sc })))
+          .then(({ error }) => (error ? `size_chart: ${error.message}` : null))
+      : null,
+    data.materials?.length
+      ? supabase
+          .from('product_materials')
+          .insert(data.materials.map((m) => ({ product_id: productId, ...m })))
+          .then(({ error }) => (error ? `materials: ${error.message}` : null))
+      : null,
+    data.design_details?.length
+      ? supabase
+          .from('product_design_details')
+          .insert(
+            data.design_details.map((d, i) => ({
+              product_id: productId,
+              detail_text: d.detail_text,
+              sort_order: d.sort_order ?? i,
+            })),
+          )
+          .then(({ error }) => (error ? `design_details: ${error.message}` : null))
+      : null,
+    data.certifications?.length
+      ? supabase
+          .from('product_certifications')
+          .insert(data.certifications.map((c) => ({ product_id: productId, cert_name: c.cert_name })))
+          .then(({ error }) => (error ? `certifications: ${error.message}` : null))
+      : null,
+  ]);
+  const childErrors = childResults.filter((e): e is string => typeof e === 'string');
 
   return NextResponse.json(
     { product, warnings: childErrors.length ? childErrors : undefined },

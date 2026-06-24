@@ -25,13 +25,17 @@ const GET_SESSION_TIMEOUT_MS = 5_000;
  * any failure (timeout, rejection, or no session). Never throws.
  */
 async function getSessionWithTimeout(): Promise<Awaited<ReturnType<ReturnType<typeof getBrowserSupabase>['auth']['getSession']>>['data']['session']> {
+  // Save the timeout id so we can clear it after the race resolves —
+  // otherwise it leaks one timer per call (would only ever matter under
+  // heavy concurrent admin use, but it's a free fix).
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     const supabase = getBrowserSupabase();
     const result = await Promise.race([
       supabase.auth.getSession(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('getSession timed out')), GET_SESSION_TIMEOUT_MS),
-      ),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('getSession timed out')), GET_SESSION_TIMEOUT_MS);
+      }),
     ]);
     return result.data.session;
   } catch (e) {
@@ -40,6 +44,8 @@ async function getSessionWithTimeout(): Promise<Awaited<ReturnType<ReturnType<ty
     // instead of an infinite spinner.
     console.warn('[adminFetch] getSession failed:', e);
     return null;
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
   }
 }
 

@@ -19,10 +19,14 @@ export default async function RelatedProducts({
   category: string;
   excludeId: string;
 }) {
-  const relatedAll = await getProductsByCategory(category);
-  const related = relatedAll
-    .filter((p) => p.id !== excludeId)
-    .slice(0, 3);
+  // Server-side limit + exclude so we don't ship the entire category over
+  // the wire just to pick 3 of them. See getProductsByCategory for the
+  // over-fetch-by-one trick that handles the case where the current
+  // product is in the top N.
+  const related = await getProductsByCategory(category, {
+    limit: 3,
+    excludeId,
+  });
   if (related.length === 0) return null;
 
   return (

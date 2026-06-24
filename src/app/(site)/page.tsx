@@ -9,8 +9,10 @@ export const revalidate = 60;
 
 export default async function HomePage() {
   // Parallelize: two independent Supabase reads shouldn't be serial.
+  // Cap featured at 6 server-side — we only ever render 6 on the home
+  // page, so pulling more wastes wire bytes.
   const [featuredProducts, allCategories] = await Promise.all([
-    getFeaturedProducts(),
+    getFeaturedProducts({ limit: 6 }),
     getAllCategories(),
   ]);
   const productCategories = allCategories.filter((c) => c.slug !== 'all');
@@ -97,10 +99,12 @@ export default async function HomePage() {
                 href={`/products?category=${cat.slug}`}
                 className="group relative h-80 overflow-hidden"
               >
-                <img
+                <Image
                   src={cat.image}
                   alt={cat.label}
-                  className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                 <div className="absolute inset-0 flex items-end p-6 z-10">

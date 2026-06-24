@@ -35,17 +35,31 @@ export default function InquiryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  // Surface load failures so the user sees an actionable message instead
+  // of an empty product picker with no context.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
     Promise.all([
-      fetch('/api/products').then((r) => r.json()),
-      fetch('/api/categories').then((r) => r.json()),
+      fetch('/api/products', { signal: controller.signal }).then((r) => {
+        if (!r.ok) throw new Error(`Failed to load products (${r.status})`);
+        return r.json();
+      }),
+      fetch('/api/categories', { signal: controller.signal }).then((r) => {
+        if (!r.ok) throw new Error(`Failed to load categories (${r.status})`);
+        return r.json();
+      }),
     ])
       .then(([prodData, catData]) => {
         setProducts(prodData.products || []);
         setCategories(catData.categories || []);
       })
-      .catch(console.error);
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        setLoadError(e instanceof Error ? e.message : 'Failed to load');
+      });
+    return () => controller.abort();
   }, []);
 
   const handleChange = (field: keyof FormData, value: string) => {
@@ -245,6 +259,11 @@ export default function InquiryPage() {
               <p className="text-[#2C2C2C]/40 text-xs mb-6">
                 Select the products you&apos;re interested in. You can also request our full catalog.
               </p>
+              {loadError && (
+                <div className="mb-4 text-sm text-amber-800 bg-amber-50 px-3 py-2 rounded-md">
+                  We couldn&apos;t load the product list right now ({loadError}). You can still submit the form and we&apos;ll follow up with our full catalog.
+                </div>
+              )}
               <div className="space-y-4">
                 {categories.filter((c) => c.slug !== 'all').map((cat) => {
                   const catProducts = products.filter((p) => p.category === cat.label);

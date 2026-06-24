@@ -23,6 +23,7 @@ export default function AboutPage() {
                 src="/products/sweater-white.webp"
                 alt="Chengfeng International manufacturing"
                 fill
+                priority
                 className="object-cover object-top"
                 sizes="(max-width: 1024px) 100vw, 50vw"
               />

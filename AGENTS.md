@@ -38,7 +38,6 @@
 │   │       ├── categories/route.ts
 │   │       ├── products/route.ts & [id]/route.ts
 │   │       ├── rfqs/route.ts
-│   │       ├── fetch-pdf/route.ts
 │   │       └── admin/      # 管理API
 │   │           ├── auth/route.ts
 │   │           ├── dashboard/route.ts
@@ -114,7 +113,6 @@
 | GET | /api/products?category=&search=&featured= | 产品列表 (支持筛选) |
 | GET | /api/products/[id] | 产品详情 (含关联数据) |
 | POST | /api/rfqs | 提交询价单 |
-| POST | /api/fetch-pdf | PDF/URL内容解析 |
 
 ### 管理接口
 
