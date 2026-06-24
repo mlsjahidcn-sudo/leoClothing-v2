@@ -36,12 +36,12 @@ src/
 │   ├── globals.css          # 全局样式（包含 shadcn 主题变量）
 │   └── [route]/             # 其他路由页面
 ├── components/              # React 组件目录
-│   └── ui/                  # shadcn/ui 基础组件（优先使用）
-│       ├── button.tsx
-│       ├── card.tsx
-│       └── ...
+│   ├── Navbar.tsx, Footer.tsx, ProductCard.tsx, SizeSelector.tsx
+│   └── admin/               # 管理后台专用组件 (AuthProvider, AdminShell)
 ├── lib/                     # 工具函数库
-│   └── utils.ts            # cn() 等工具函数
+│   ├── admin-fetch.ts, admin-auth.ts
+│   ├── db-queries.ts, products.ts, validators.ts
+│   └── supabase/             # 浏览器/服务端/admin 三套 supabase 客户端
 └── hooks/                   # 自定义 React Hooks（可选）
 
 server/

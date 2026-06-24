@@ -33,6 +33,13 @@ export default function InquiryPage() {
 
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Server may return a 201 with a `warning` (e.g. RFQ row inserted but
+  // linked items failed). Surface that to the user — otherwise they'd
+  // assume every selected product was attached to the inquiry.
+  const [submitWarning, setSubmitWarning] = useState<string | null>(null);
+  // True submission failure (network / 4xx / 5xx). Distinct from
+  // `submitWarning` (partial success).
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   // Surface load failures so the user sees an actionable message instead
@@ -87,6 +94,7 @@ export default function InquiryPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const res = await fetch('/api/rfqs', {
         method: 'POST',
@@ -105,13 +113,20 @@ export default function InquiryPage() {
         }),
       });
       if (res.ok) {
+        // Even on 201, the server may return a `warning` field when
+        // the RFQ row was inserted but the linked items failed. Surface
+        // it inline above the success state so the user knows some of
+        // their selected products didn't attach — otherwise they'd
+        // assume everything went through.
+        const body = (await res.json().catch(() => ({}))) as { warning?: string };
+        if (body.warning) setSubmitWarning(body.warning);
         setSubmitted(true);
       } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to submit inquiry. Please try again.');
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        setSubmitError(err.error || 'Failed to submit inquiry. Please try again.');
       }
     } catch {
-      alert('Network error. Please try again.');
+      setSubmitError('Network error. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -127,9 +142,14 @@ export default function InquiryPage() {
             </svg>
           </div>
           <h1 className="font-serif text-2xl text-[#2C2C2C] mb-3">Inquiry Received</h1>
-          <p className="text-[#2C2C2C]/60 text-sm leading-relaxed mb-8">
+          <p className="text-[#2C2C2C]/60 text-sm leading-relaxed mb-4">
             Thank you for your interest. Our team will review your inquiry and respond within 24 business hours with detailed pricing and availability.
           </p>
+          {submitWarning && (
+            <div className="text-sm text-amber-800 bg-amber-50 px-3 py-2 rounded-md mb-8 text-left">
+              {submitWarning} You can still send us the details by replying to our follow-up email.
+            </div>
+          )}
           <Link
             href="/products"
             className="inline-flex items-center justify-center px-8 py-3 bg-[#2C2C2C] text-white text-sm tracking-[0.08em] uppercase hover:bg-[#2C2C2C]/90 transition-colors"
@@ -371,17 +391,24 @@ export default function InquiryPage() {
             </div>
 
             {/* Submit */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-[#2C2C2C]/40 text-xs">
-                We respond to all inquiries within 24 business hours.
-              </p>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="inline-flex items-center justify-center px-12 py-4 bg-[#2C2C2C] text-white text-sm tracking-[0.1em] uppercase hover:bg-[#2C2C2C]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? 'Submitting...' : 'Submit Inquiry'}
-              </button>
+            <div className="flex flex-col gap-3">
+              {submitError && (
+                <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">
+                  {submitError}
+                </div>
+              )}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-[#2C2C2C]/40 text-xs">
+                  We respond to all inquiries within 24 business hours.
+                </p>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex items-center justify-center px-12 py-4 bg-[#2C2C2C] text-white text-sm tracking-[0.1em] uppercase hover:bg-[#2C2C2C]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Inquiry'}
+                </button>
+              </div>
             </div>
           </form>
         </div>

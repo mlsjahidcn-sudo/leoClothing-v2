@@ -28,6 +28,11 @@ export default function AdminLoginPage() {
       } else {
         setError(result.error || 'Login failed');
       }
+    } catch (e) {
+      // Without this catch, a thrown network error (offline, DNS fail,
+      // CORS) bypassed setError entirely and the user was left staring
+      // at a disabled button with no feedback.
+      setError(e instanceof Error ? e.message : 'Network error');
     } finally {
       setLoading(false);
     }
@@ -53,7 +58,9 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="username"
+                // 'email' is the standard; 'username' was preventing
+                // browsers from offering to fill saved credentials.
+                autoComplete="email"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 placeholder="admin@chengfeng.com"
               />

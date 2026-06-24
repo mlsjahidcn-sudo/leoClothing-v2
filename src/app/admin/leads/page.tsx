@@ -72,6 +72,27 @@ export default function AdminLeadsPage() {
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
+  // Close the Add-Lead modal on Escape. Keyboard users have no other
+  // way to dismiss it (the backdrop click works for mouse but not for
+  // pure keyboard navigation). Also lock body scroll while the modal
+  // is open so the underlying table doesn't shift underneath.
+  useEffect(() => {
+    if (!showAddModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAddModal(false);
+        setAddLeadError(null);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [showAddModal]);
+
   const handleAddLead = async () => {
     // Surface failures — without the `if (!res.ok)` branch, a network
     // blip or duplicate-email 400 closed the modal and refreshed the
@@ -258,9 +279,19 @@ export default function AdminLeadsPage() {
 
       {/* Add Lead Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">Add New Lead</h2>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => { setShowAddModal(false); setAddLeadError(null); }}
+          role="presentation"
+        >
+          <div
+            className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-lead-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="add-lead-title" className="text-lg font-semibold mb-4">Add New Lead</h2>
             {addLeadError && (
               <div className="mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">
                 {addLeadError}

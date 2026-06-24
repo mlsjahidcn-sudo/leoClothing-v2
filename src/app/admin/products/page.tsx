@@ -209,14 +209,21 @@ export default function AdminProductsPage() {
                         <button
                           type="button"
                           onClick={() => handleToggleActive(p.id, !p.is_active)}
-                          className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium transition-opacity hover:opacity-70 ${
+                          // Touch targets must be ≥44×44 per WCAG 2.5.5.
+                          // The pill button was ~24px tall — wrap it in a
+                          // min-height-44 flex parent so the click area
+                          // meets the threshold without making the pill
+                          // itself visually larger.
+                          className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 transition-opacity hover:opacity-70 ${
                             p.is_active
                               ? 'bg-green-50 text-green-700'
                               : 'bg-gray-100 text-gray-500'
                           }`}
                           title={p.is_active ? 'Click to deactivate' : 'Click to activate'}
                         >
-                          {p.is_active ? 'Active' : 'Inactive'}
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium pointer-events-none">
+                            {p.is_active ? 'Active' : 'Inactive'}
+                          </span>
                         </button>
                         {p.is_featured && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium">
@@ -229,22 +236,24 @@ export default function AdminProductsPage() {
                       <div className="flex items-center justify-end gap-1">
                         <Link
                           href={`/admin/products/${p.id}`}
-                          className="p-1.5 text-gray-400 hover:text-gray-900 transition-colors"
+                          // 44×44 hit target via negative margin; visual
+                          // icon stays the same 16px so the row height
+                          // doesn't change.
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 text-gray-400 hover:text-gray-900 transition-colors"
                           title="Edit"
                         >
                           <Pencil className="w-4 h-4" />
                         </Link>
                         <button
                           onClick={() => handleDeactivate(p.id)}
-                          className="p-1.5 text-gray-400 hover:text-amber-600 transition-colors"
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 text-gray-400 hover:text-amber-600 transition-colors"
                           title="Deactivate (hide from public site)"
                         >
-                          {/* EyeOff signals "stop showing" — distinct from delete */}
                           <EyeOff className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleHardDelete(p.id, p.name)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 text-gray-400 hover:text-red-600 transition-colors"
                           title="Delete permanently"
                         >
                           <Trash2 className="w-4 h-4" />

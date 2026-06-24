@@ -62,15 +62,19 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   // session. (Cheap; a single in-flight ref beats a useState +
   // useEffect dance.)
   const mountedRef = useRef(true);
-  const inflightLoadRef = useRef<Promise<AdminUserView | null> | null>(null);
+  const inflightLoadRef = useRef<{ userId: string; promise: Promise<AdminUserView | null> } | null>(null);
 
   const loadProfile = useCallback(
     async (authUser: User): Promise<AdminUserView | null> => {
-      // De-dupe: if a load is already in flight for the same user,
-      // reuse the existing promise. (Boot effect + listener can
-      // both pick up the same initial session and race.)
-      if (inflightLoadRef.current) return inflightLoadRef.current;
-      const p = (async () => {
+      // De-dupe per user: if a load is already in flight for THIS
+      // specific user, reuse it. Boot effect + listener can both
+      // pick up the same initial session and race. Keying on the
+      // user ID prevents the foot-gun where user A logs out, user
+      // B logs in while A's profile load is still in flight, and
+      // the cached promise resolves with A's profile for B's session.
+      const cached = inflightLoadRef.current;
+      if (cached && cached.userId === authUser.id) return cached.promise;
+      const promise = (async () => {
         const { data, error } = await supabase
           .from('admin_profiles')
           .select('id, email, name, role, created_at')
@@ -78,11 +82,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
         return error || !data ? null : toView(authUser, data);
       })();
-      inflightLoadRef.current = p;
+      inflightLoadRef.current = { userId: authUser.id, promise };
       try {
-        return await p;
+        return await promise;
       } finally {
-        inflightLoadRef.current = null;
+        if (inflightLoadRef.current?.promise === promise) {
+          inflightLoadRef.current = null;
+        }
       }
     },
     [supabase],

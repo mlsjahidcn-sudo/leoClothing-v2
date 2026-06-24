@@ -30,4 +30,11 @@ echo "Clearing port ${PORT} before start."
 kill_port_if_listening
 echo "Starting HTTP service on port ${PORT} for dev..."
 
+# NODE_OPTIONS=--no-deprecation silences Node 20+'s DEP0169 warning
+# (the legacy url.parse() in src/server.ts triggers it on every
+# request). We can't switch to WHATWG URL because Next.js's
+# RequestHandler expects UrlWithParsedQuery shape with .query —
+# WHATWG URLs only expose .searchParams.
+export NODE_OPTIONS="${NODE_OPTIONS:-} --no-deprecation"
+
 pnpm tsx watch src/server.ts

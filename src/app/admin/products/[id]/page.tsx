@@ -399,7 +399,7 @@ export default function AdminProductDetailPage() {
                     <td className="px-3 py-2">
                       <button onClick={() => {
                         updateProduct({ product_bulk_pricing: product.product_bulk_pricing.filter((_, i) => i !== idx) });
-                      }} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                      }} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
                     </td>
                   </tr>
                 ))}
@@ -435,7 +435,7 @@ export default function AdminProductDetailPage() {
                   }} className={`${smallInputCls} flex-1`} placeholder="Color name" />
                   <button onClick={() => {
                     updateProduct({ product_colors: product.product_colors.filter((_, i) => i !== idx) });
-                  }} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                  }} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
@@ -464,7 +464,7 @@ export default function AdminProductDetailPage() {
                   }} className={`${smallInputCls} w-16`} placeholder="Size" />
                   <button onClick={() => {
                     updateProduct({ product_sizes: product.product_sizes.filter((_, i) => i !== idx) });
-                  }} className="text-gray-400 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                  }} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 text-gray-400 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
                 </div>
               ))}
             </div>
@@ -562,7 +562,7 @@ export default function AdminProductDetailPage() {
                   }} className={`${smallInputCls} flex-1`} />
                   <button onClick={() => {
                     updateProduct({ product_materials: product.product_materials.filter((_, i) => i !== idx) });
-                  }} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                  }} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
                 </div>
               </div>
             ))}
@@ -632,7 +632,7 @@ export default function AdminProductDetailPage() {
                       <td className="px-2 py-1">
                         <button onClick={() => {
                           updateProduct({ product_size_chart: product.product_size_chart.filter((_, i) => i !== idx) });
-                        }} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                        }} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
                       </td>
                     </tr>
                   ))}
@@ -661,7 +661,7 @@ export default function AdminProductDetailPage() {
                   }} className={`${smallInputCls} flex-1`} placeholder="Design detail" />
                   <button onClick={() => {
                     updateProduct({ product_design_details: product.product_design_details.filter((_, i) => i !== idx) });
-                  }} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                  }} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
@@ -687,7 +687,7 @@ export default function AdminProductDetailPage() {
                   }} className={`${smallInputCls} flex-1`} placeholder="Certification name" />
                   <button onClick={() => {
                     updateProduct({ product_certifications: product.product_certifications.filter((_, i) => i !== idx) });
-                  }} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                  }} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center -m-3 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
