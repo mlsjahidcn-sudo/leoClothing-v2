@@ -25,6 +25,7 @@ export default function Footer() {
                 { href: '/products', label: 'Product Catalog' },
                 { href: '/inquiry', label: 'Request Quote' },
                 { href: '/about', label: 'Factory & Capabilities' },
+                { href: '/contact-us', label: 'Contact Us' },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
