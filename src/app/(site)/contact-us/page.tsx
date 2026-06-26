@@ -1,6 +1,7 @@
-import { Phone, Mail, MapPin, Clock, MessageCircle } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 import ContactQrWidget from '@/components/ContactQrWidget';
 import ContactHero from '@/components/ContactHero';
+import WhatsAppContactCard from '@/components/WhatsAppContactCard';
 
 /**
  * Contact information page. A static RSC shell + a small client island
@@ -67,13 +68,7 @@ export default function ContactPage() {
               href={null}
               hint="China Standard Time (GMT+8)"
             />
-            <ContactCard
-              icon={<MessageCircle className="w-5 h-5" aria-hidden="true" />}
-              label="WhatsApp"
-              value="Quickest reply — scan or click"
-              href="/inquiry"
-              hint="Live chat during working hours"
-            />
+            <WhatsAppContactCard />
             <ContactCard
               icon={<Mail className="w-5 h-5" aria-hidden="true" />}
               label="Quote Request"
