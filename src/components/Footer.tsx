@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import FooterWhatsApp from '@/components/FooterWhatsApp';
 
 export default function Footer() {
   return (
@@ -53,6 +54,9 @@ export default function Footer() {
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>Tel: +86 175 7500 1415</li>
               <li>Email: info@chengfenginternational.com</li>
+              {/* Client island — renders only when the admin has set a
+                  WhatsApp number in /admin/settings. Hidden otherwise. */}
+              <FooterWhatsApp />
               <li>Address: Dongguan, Guangdong, China</li>
             </ul>
           </div>

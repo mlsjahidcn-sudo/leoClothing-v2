@@ -20,6 +20,9 @@ export interface AdminProfile {
   email: string;
   name: string;
   role: string;
+  // WhatsApp contact (E.164, free-text). Nullable for admins that haven't
+  // set it yet. Surfaced in the admin shell + used by /admin/settings.
+  whatsapp: string | null;
 }
 
 export interface AdminUserView {
@@ -27,6 +30,7 @@ export interface AdminUserView {
   email: string;
   name: string;
   role: string;
+  whatsapp: string | null;
 }
 
 interface AuthContextValue {
@@ -34,6 +38,14 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  /**
+   * Re-fetch the current admin's profile row from the server and update
+   * the context's `user` view. Use after the settings page mutates
+   * fields that the shell displays (name, whatsapp).
+   *
+   * No-ops if there's no active session.
+   */
+  refresh: () => Promise<void>;
   /** The raw Supabase session — use it to sign API requests. */
   session: Session | null;
 }
@@ -48,6 +60,7 @@ function toView(user: User, profile: ProfileRow): AdminUserView {
     email: profile.email,
     name: profile.name,
     role: profile.role,
+    whatsapp: profile.whatsapp ?? null,
   };
 }
 
@@ -77,7 +90,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       const promise = (async () => {
         const { data, error } = await supabase
           .from('admin_profiles')
-          .select('id, email, name, role, created_at')
+          .select('id, email, name, role, whatsapp, created_at, updated_at')
           .eq('id', authUser.id)
           .maybeSingle();
         return error || !data ? null : toView(authUser, data);
@@ -229,13 +242,27 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     router.push('/admin/login');
   }, [supabase, router]);
 
+  /**
+   * Force a re-read of the current admin's profile row from the DB and
+   * push it into the auth context. Used after the settings page saves
+   * so the shell + any cached views reflect the new name/whatsapp
+   * without a full page reload.
+   *
+   * Goes through applySession (the single source of truth) rather than
+   * mutating `user` directly — that way isLoading toggles correctly and
+   * the listener won't also try to re-apply the same data.
+   */
+  const refresh = useCallback<AuthContextValue['refresh']>(async () => {
+    await applySession(session);
+  }, [applySession, session]);
+
   // Memoize the context value so consumers don't re-render on every
   // parent render. Without this, every state change above (session,
   // user, isLoading) recomputed the object identity and re-rendered
   // every useAdminAuth() consumer — including AdminShell.
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isLoading, login, logout, session }),
-    [user, isLoading, login, logout, session],
+    () => ({ user, isLoading, login, logout, refresh, session }),
+    [user, isLoading, login, logout, refresh, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

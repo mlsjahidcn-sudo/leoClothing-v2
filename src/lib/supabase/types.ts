@@ -326,6 +326,11 @@ export interface Database {
           name: string;
           role: string;
           created_at: string;
+          // Added in migration 0002_admin_whatsapp.sql — free-text, expected
+          // E.164 (+8615975614041) but not enforced; admins may paste the
+          // format they actually use on their phone.
+          whatsapp: string | null;
+          updated_at: string | null;
         };
         Insert: {
           id: string;
@@ -333,12 +338,27 @@ export interface Database {
           name: string;
           role?: string;
           created_at?: string;
+          whatsapp?: string | null;
+          updated_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['admin_profiles']['Insert']>;
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    // See supabase/migrations/0002_admin_whatsapp.sql.
+    // The `public_admin_whatsapp` view returns at most one non-empty
+    // WhatsApp number from the active admin. Exposed to anon +
+    // authenticated so the public site can render a "Chat on WhatsApp"
+    // button without going through the admin API.
+    Views: {
+      public_admin_whatsapp: {
+        Row: { whatsapp: string | null };
+        // Views are read-only.
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
     Functions: Record<string, never>;
     Enums: Record<string, never>;
   };

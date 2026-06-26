@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Menu,
   Users,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 
 const navItems = [
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/admin/products', label: 'Products', icon: Package, exact: false },
   { href: '/admin/leads', label: 'Leads', icon: Users, exact: false },
   { href: '/admin/rfqs', label: 'RFQs', icon: FileText, exact: false },
+  { href: '/admin/settings', label: 'Settings', icon: SettingsIcon, exact: false },
 ];
 
 // Defensive: any falsy `name`/`email` should fall back to 'A', not crash

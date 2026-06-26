@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { MessageCircle } from 'lucide-react';
 import type { Product, Category } from '@/lib/products';
+import { useSiteWhatsApp, formatWhatsAppLink } from '@/lib/site-info';
 
 interface FormData {
   companyName: string;
@@ -30,6 +32,12 @@ export default function InquiryPage() {
     customization: [],
     message: '',
   });
+
+  // Active admin's WhatsApp number — surfaced as a "Chat on WhatsApp"
+  // shortcut above the form for buyers who want a faster reply than
+  // email. Hidden if the admin hasn't set a number yet.
+  const { whatsapp: siteWhatsApp } = useSiteWhatsApp();
+  const whatsappLink = formatWhatsAppLink(siteWhatsApp);
 
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -173,6 +181,17 @@ export default function InquiryPage() {
           <p className="text-white/60 text-base max-w-xl">
             Tell us about your sourcing needs. Whether you need wholesale pricing, custom manufacturing, or samples — we&apos;ll get back to you within 24 hours.
           </p>
+          {whatsappLink && (
+            <a
+              href={whatsappLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex items-center gap-2.5 px-6 py-3 bg-[#25D366] hover:bg-[#1ebe57] text-white text-sm font-medium tracking-[0.04em] transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" aria-hidden="true" />
+              Chat on WhatsApp
+            </a>
+          )}
         </div>
       </section>
 

@@ -78,7 +78,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
   ): Promise<string[]> => {
     if (!rows) return [];
     const errors: string[] = [];
-    const { error: delError } = await supabase.from(tableName).delete().eq('product_id', id);
+    // `tableName` is a string here (deliberately — we share this helper
+    // across all 8 sub-tables). Cast through `never` to bypass the
+    // typed `.from()` overload, which only accepts table names in the
+    // Tables union (plus views, which we don't want to write to anyway).
+    const { error: delError } = await supabase.from(tableName as never).delete().eq('product_id', id);
     if (delError) {
       errors.push(`${tableName} delete: ${delError.message}`);
       return errors;
@@ -90,7 +94,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     // tables), but each call site's `mapRow` returns the right shape
     // for the corresponding table — see the call sites below.
     const payload = rows.map((r, i) => ({ product_id: id, ...mapRow(r, i) })) as never;
-    const { error: insError } = await supabase.from(tableName).insert(payload as never);
+    const { error: insError } = await supabase.from(tableName as never).insert(payload as never);
     if (insError) errors.push(`${tableName} insert: ${insError.message}`);
     return errors;
   };
