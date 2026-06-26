@@ -224,7 +224,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   </h3>
                   <div className="flex flex-wrap gap-3">
                     {product.availableColors.map((color) => (
-                      <div key={color.name} className="flex items-center gap-2">
+                      // Key by name + hex so two rows with the same name
+                      // but different hex codes (e.g. two shades the admin
+                      // labeled "Navy") don't collide on React keys.
+                      <div key={`${color.name}-${color.hex}`} className="flex items-center gap-2">
                         <span
                           className="w-6 h-6 rounded-full border border-[#D9D4CE]"
                           style={{ backgroundColor: color.hex }}

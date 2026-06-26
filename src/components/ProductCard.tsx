@@ -61,7 +61,10 @@ export default function ProductCard({ product, variant = 'standard' }: ProductCa
         <div className="flex items-center gap-1.5 mb-3">
           {product.availableColors.map((color) => (
             <span
-              key={color.name}
+              // Key by name + hex so two rows with the same name but
+              // different hex codes (e.g. two "Navy" shades) don't
+              // collide on React keys.
+              key={`${color.name}-${color.hex}`}
               className="w-3 h-3 rounded-full border border-[#D9D4CE]"
               style={{ backgroundColor: color.hex }}
               title={color.name}
