@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
 import type { Product, Category } from '@/lib/products';
 import { useSiteWhatsApp, formatWhatsAppLink } from '@/lib/site-info';
+import WhatsAppQr from '@/components/WhatsAppQr';
 
 interface FormData {
   companyName: string;
@@ -174,24 +175,36 @@ export default function InquiryPage() {
       {/* Header */}
       <section className="bg-[#2C2C2C] py-16 lg:py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <p className="text-[#B8956A] text-sm tracking-[0.15em] uppercase mb-3">Get Started</p>
-          <h1 className="font-serif text-4xl lg:text-5xl text-white mb-4" style={{ letterSpacing: '0.02em' }}>
-            Request a Quote
-          </h1>
-          <p className="text-white/60 text-base max-w-xl">
-            Tell us about your sourcing needs. Whether you need wholesale pricing, custom manufacturing, or samples — we&apos;ll get back to you within 24 hours.
-          </p>
-          {whatsappLink && (
-            <a
-              href={whatsappLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex items-center gap-2.5 px-6 py-3 bg-[#25D366] hover:bg-[#1ebe57] text-white text-sm font-medium tracking-[0.04em] transition-colors"
-            >
-              <MessageCircle className="w-4 h-4" aria-hidden="true" />
-              Chat on WhatsApp
-            </a>
-          )}
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-10">
+            <div className="flex-1 min-w-0">
+              <p className="text-[#B8956A] text-sm tracking-[0.15em] uppercase mb-3">Get Started</p>
+              <h1 className="font-serif text-4xl lg:text-5xl text-white mb-4" style={{ letterSpacing: '0.02em' }}>
+                Request a Quote
+              </h1>
+              <p className="text-white/60 text-base max-w-xl">
+                Tell us about your sourcing needs. Whether you need wholesale pricing, custom manufacturing, or samples — we&apos;ll get back to you within 24 hours.
+              </p>
+              {whatsappLink && (
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-6 inline-flex items-center gap-2.5 px-6 py-3 bg-[#25D366] hover:bg-[#1ebe57] text-white text-sm font-medium tracking-[0.04em] transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" aria-hidden="true" />
+                  Chat on WhatsApp
+                </a>
+              )}
+            </div>
+            {/* QR sits in the dark header so the white card pops.
+                `lg:flex` keeps it inline on desktop; stacked under the
+                CTA on mobile (already handled by flex-col above). */}
+            {whatsappLink && (
+              <div className="flex-shrink-0 self-start">
+                <WhatsAppQr size={200} />
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

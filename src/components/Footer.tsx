@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import FooterWhatsApp from '@/components/FooterWhatsApp';
+import WhatsAppQr from '@/components/WhatsAppQr';
 
 export default function Footer() {
   return (
@@ -59,6 +60,13 @@ export default function Footer() {
               <FooterWhatsApp />
               <li>Address: Dongguan, Guangdong, China</li>
             </ul>
+            {/* Compact QR — 140px fits a single footer column on
+                desktop without forcing a row wrap. Caption is hidden
+                (the line above already names WhatsApp) and the number
+                is hidden too (it's the line just above). */}
+            <div className="mt-5">
+              <WhatsAppQr size={140} caption="Scan to chat" hideNumber />
+            </div>
           </div>
         </div>
 
