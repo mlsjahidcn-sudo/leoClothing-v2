@@ -93,7 +93,10 @@
 - 所有表已启用 RLS，仅通过 service_role_key 后端访问
 - 产品ID格式：`cf-polo-001`, `cf-tee-001`, `cf-stripe-001`, `cf-knit-001`
 - 分类slug：`polos`, `t-shirts`, `striped-tees`, `knitwear`
-- 管理员账户：`admin@chengfeng.com` / `admin123`
+- 管理员账户（Supabase Auth 中实际存在）：
+  - `mlsjahid@qq.com`（`superadmin`）— 主账号
+  - `leochengfeng@gmail.com`（`superadmin`）— 业务联系邮箱
+  - 密码不写入仓库；在 Supabase dashboard 中重置，或用 service-role 密钥通过 `auth/v1/admin/users/{id}` PUT 设置。
 
 ## 常用命令
 
