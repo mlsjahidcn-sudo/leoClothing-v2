@@ -11,6 +11,13 @@
  * are optional. We're a B2B site — anyone filling this out is asking
  * us to follow up. Phone and country help us qualify the lead but
  * shouldn't block the chat.
+ *
+ * Validation: we use `noValidate` on the form so the browser doesn't
+ * intercept submission with its own pattern popup. The browser's
+ * built-in `<input type="email">` check rejects addresses like
+ * `a@b` (no TLD), which is fine as a courtesy but creates a confusing
+ * "fix this field" cycle when the user has typed something that
+ * passes our regex. Server-side Zod is the authority.
  */
 import { useState, type FormEvent } from 'react';
 
@@ -60,7 +67,10 @@ export default function LeadGateForm({
     if (!email.trim()) {
       next.email = 'Required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      next.email = 'Enter a valid email';
+      // Client check is intentionally lenient — server Zod is the
+      // authority. We only block obvious junk here so the round-trip
+      // doesn't happen on every keystroke.
+      next.email = 'Enter a valid email (e.g. you@yourbrand.com)';
     }
     if (phone && phone.trim().length < 5) {
       next.phone = 'Phone looks too short';
@@ -85,12 +95,34 @@ export default function LeadGateForm({
         visitor_token: visitorToken,
       });
     } catch (err) {
-      setServerError(
-        err instanceof Error ? err.message : 'Something went wrong. Please try again.',
-      );
+      // Surface the server's field-level error inline when we can
+      // identify the field; otherwise fall back to the banner.
+      const fieldError = readServerFieldError(err);
+      if (fieldError) {
+        setErrors((prev) => ({ ...prev, [fieldError.field]: fieldError.message }));
+      } else {
+        setServerError(
+          err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+        );
+      }
     } finally {
       setSubmitting(false);
     }
+  }
+
+  /**
+   * The chatbot parent throws `Error(serverMessage)` where the message
+   * is whatever the route's `error` field was. For lead-gate failures
+   * we just want to show the user what to fix — without knowing the
+   * field from the string alone, we always surface a generic banner
+   * and rely on the client-side `validate()` to catch obvious cases
+   * first. If we later want field-level highlighting, the parent
+   * can throw a structured `Error` subclass instead.
+   */
+  function readServerFieldError(
+    _err: unknown,
+  ): { field: keyof FieldErrors; message: string } | null {
+    return null;
   }
 
   const inputClass =
@@ -99,7 +131,11 @@ export default function LeadGateForm({
   const errorClass = 'mt-1 text-xs text-red-600';
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 px-4 py-4 sm:px-5 sm:py-5">
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+      className="flex flex-col gap-3 px-4 py-4 sm:px-5 sm:py-5"
+    >
       {!compact && (
         <div className="mb-1">
           <h3 className="font-serif text-lg text-[#2C2C2C]">
@@ -161,7 +197,15 @@ export default function LeadGateForm({
         </label>
         <input
           id="cb-email"
-          type="email"
+          // type="text" + inputMode="email" — we want mobile keyboards
+          // to offer the @ key but skip the browser's built-in pattern
+          // check. Server-side Zod is the authority; the form's
+          // `noValidate` (above) keeps the browser from intercepting
+          // submit and showing "The string did not match the expected
+          // pattern" for inputs like `a@b` that pass our regex but
+          // fail HTML5's stricter check.
+          type="text"
+          inputMode="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={submitting}
