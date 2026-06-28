@@ -128,7 +128,7 @@ export default function AdminSettingsPage() {
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
+      <form onSubmit={onSubmit} noValidate className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
         {/* Email (read-only — auth-managed) */}
         <div>
           <label
@@ -139,7 +139,8 @@ export default function AdminSettingsPage() {
           </label>
           <input
             id="email"
-            type="email"
+            type="text"
+            inputMode="email"
             value={loaded?.email ?? user?.email ?? ''}
             readOnly
             className="w-full px-4 py-2.5 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-md cursor-not-allowed"

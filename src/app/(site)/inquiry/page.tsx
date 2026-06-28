@@ -211,7 +211,7 @@ export default function InquiryPage() {
       {/* Form */}
       <section className="py-12 lg:py-16">
         <div className="mx-auto max-w-4xl px-6 lg:px-8">
-          <form onSubmit={handleSubmit} className="space-y-10">
+          <form onSubmit={handleSubmit} noValidate className="space-y-10">
             {/* Company Information */}
             <div className="bg-white border border-[#D9D4CE] p-6 lg:p-8">
               <h2 className="font-serif text-lg text-[#2C2C2C] mb-6" style={{ letterSpacing: '0.04em' }}>
@@ -249,7 +249,8 @@ export default function InquiryPage() {
                     Email Address *
                   </label>
                   <input
-                    type="email"
+                    type="text"
+                    inputMode="email"
                     required
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
