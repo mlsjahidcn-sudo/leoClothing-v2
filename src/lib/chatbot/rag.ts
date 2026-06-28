@@ -155,9 +155,16 @@ function serializeContext(
  * Extract product IDs the assistant cited in its reply.
  *
  * The system prompt tells the model to cite products by their SKU
- * (`SKU: CF-PO-001`) or by their numeric label (`Product 3`). We
+ * (e.g. `SKU: 28255`) or by their numeric label (`Product 3`). We
  * resolve both forms to canonical product IDs so the admin dashboard
  * can render the cited products as links.
+ *
+ * SKU matching uses an alternation built from the live catalog's
+ * actual SKUs rather than a hardcoded pattern, because the seed
+ * admin has added products with non-`CF-XX-NNN` SKUs (e.g. legacy
+ * numeric SKUs from import). A hardcoded `CF-[A-Z]{2}-\d{3}` regex
+ * silently missed those and the cited-products UI showed nothing
+ * for them.
  *
  * Returns de-duplicated IDs in the order they appeared.
  */
@@ -168,20 +175,35 @@ export function extractCitedProductIds(
   if (!assistantText || products.length === 0) return [];
   const seen = new Set<string>();
   const result: string[] = [];
-  const skuToId = new Map(products.map((p, idx) => [p.sku, p.id]));
-  // SKU match — exact token. SKU format is `CF-XX-NNN`.
-  const skuRe = /\bCF-[A-Z]{2}-\d{3}\b/g;
-  let m: RegExpExecArray | null;
-  while ((m = skuRe.exec(assistantText)) !== null) {
-    const id = skuToId.get(m[0]);
-    if (id && !seen.has(id)) {
-      seen.add(id);
-      result.push(id);
+  const skuToId = new Map<string, string>();
+  for (const p of products) {
+    if (p.sku) skuToId.set(p.sku, p.id);
+  }
+  // Build a single alternation regex from the live SKUs.
+  // Escape regex metachars in each SKU; sort by length desc so
+  // longer SKUs match first when one is a prefix of another.
+  const escapedSkus = Array.from(skuToId.keys())
+    .map((sku) => sku.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .sort((a, b) => b.length - a.length);
+  if (escapedSkus.length > 0) {
+    // Word boundary on the left side only — SKUs can end with
+    // punctuation like a period or comma.
+    const skuRe = new RegExp(`\\b(?:${escapedSkus.join('|')})`, 'g');
+    let m: RegExpExecArray | null;
+    while ((m = skuRe.exec(assistantText)) !== null) {
+      const id = skuToId.get(m[0]);
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        result.push(id);
+      }
     }
   }
   // Numeric label match — "Product 3", "product 12", "products 1 and 2".
-  // We index from 1 to match the prompt's numbering.
+  // We index from 1 to match the prompt's numbering. This is a
+  // fallback for when the model forgets to mention the SKU and only
+  // uses the numeric label.
   const numericRe = /\bproducts?\s+(\d{1,3})\b/gi;
+  let m: RegExpExecArray | null;
   while ((m = numericRe.exec(assistantText)) !== null) {
     const n = parseInt(m[1], 10);
     const product = products[n - 1];

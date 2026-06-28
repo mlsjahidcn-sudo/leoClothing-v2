@@ -25,6 +25,13 @@ interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   cited_product_ids: string[];
+  /**
+   * Hydrated citations returned by the messages endpoint. Optional
+   * because the conversation-rehydrate endpoint (returning the full
+   * transcript) only ships IDs. When absent we render the IDs as
+   * fallback — the admin transcript view does the same.
+   */
+  cited_products?: Array<{ id: string; name: string; sku: string }>;
   created_at: string;
 }
 
@@ -92,6 +99,7 @@ export default function ChatbotPanel({
       const body = (await res.json()) as {
         assistant?: string;
         cited_product_ids?: string[];
+        cited_products?: Array<{ id: string; name: string; sku: string }>;
         error?: string;
       };
       if (!res.ok) {
@@ -102,6 +110,7 @@ export default function ChatbotPanel({
         role: 'assistant',
         content: body.assistant ?? '',
         cited_product_ids: body.cited_product_ids ?? [],
+        cited_products: body.cited_products ?? [],
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
@@ -201,15 +210,25 @@ export default function ChatbotPanel({
                 <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
                 {m.role === 'assistant' && m.cited_product_ids.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5 border-t border-[#EDEBE8] pt-2">
-                    {m.cited_product_ids.map((id) => (
-                      <Link
-                        key={id}
-                        href={`/products/${id}`}
-                        className="rounded-sm border border-[#B8956A] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[#B8956A] hover:bg-[#B8956A] hover:text-white"
-                      >
-                        View {id}
-                      </Link>
-                    ))}
+                    {m.cited_product_ids.map((id) => {
+                      // Prefer the hydrated name from the server so the
+                      // link text reads "Navy Herringbone Knit Polo"
+                      // instead of a raw UUID. Fall back to the SKU or
+                      // the ID if hydration didn't ship (e.g. on
+                      // transcript rehydrate from /conversations/[id]).
+                      const hydrated = m.cited_products?.find((p) => p.id === id);
+                      const label = hydrated?.name ?? `View ${id}`;
+                      return (
+                        <Link
+                          key={id}
+                          href={`/products/${id}`}
+                          title={hydrated?.sku ? `SKU: ${hydrated.sku}` : id}
+                          className="max-w-[200px] truncate rounded-sm border border-[#B8956A] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[#B8956A] hover:bg-[#B8956A] hover:text-white"
+                        >
+                          {label}
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -38,6 +38,28 @@ export async function GET(
     return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
   }
   const messages = await loadTranscript(conv.id);
+
+  // Hydrate citations server-side so the chat widget can render
+  // product names instead of raw IDs (which leak UUIDs for products
+  // added outside the cf-XXX-NNN convention). Collect every cited
+  // ID across the transcript, do a single IN-list query, then merge
+  // the names back into each message in order.
+  const citedIds = Array.from(
+    new Set(messages.flatMap((m) => m.citedProductIds)),
+  );
+  let productIndex: Record<string, { id: string; name: string; sku: string }> = {};
+  if (citedIds.length > 0) {
+    const { data: products, error: prodError } = await supabase
+      .from('products')
+      .select('id, name, sku')
+      .in('id', citedIds);
+    if (!prodError && products) {
+      productIndex = Object.fromEntries(
+        products.map((p) => [p.id, { id: p.id, name: p.name, sku: p.sku }]),
+      );
+    }
+  }
+
   return NextResponse.json(
     {
       conversation: conv,
@@ -46,6 +68,9 @@ export async function GET(
         role: m.role,
         content: m.content,
         cited_product_ids: m.citedProductIds,
+        cited_products: m.citedProductIds
+          .map((id) => productIndex[id])
+          .filter((p): p is { id: string; name: string; sku: string } => Boolean(p)),
         created_at: m.createdAt,
       })),
     },

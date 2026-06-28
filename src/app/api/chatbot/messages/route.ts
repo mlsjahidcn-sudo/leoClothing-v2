@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       {
         assistant: result.assistant,
         cited_product_ids: result.citedProductIds,
+        cited_products: result.citedProducts,
         usage: result.usage ?? null,
       },
       { status: 200 },

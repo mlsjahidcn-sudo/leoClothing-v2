@@ -33,9 +33,22 @@ export interface ChatTurnInput {
   userMessage: string;
 }
 
+export interface CitedProduct {
+  id: string;
+  name: string;
+  sku: string;
+}
+
 export interface ChatTurnResult {
   assistant: string;
   citedProductIds: string[];
+  /**
+   * Hydrated citations with human-readable names so the chat panel
+   * and admin transcript can render "View Knit Polo" instead of
+   * "View 98829394-1b09-44ef-9cd6-6fdd5fdadc01". Same order as
+   * `citedProductIds`.
+   */
+  citedProducts: CitedProduct[];
   /** Tokens used, if DeepSeek returned usage. Useful for ops dashboards. */
   usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
 }
@@ -77,6 +90,14 @@ export async function runTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
     throw new ChatbotEngineError('Unexpected LLM error', 500);
   }
   const citedProductIds = extractCitedProductIds(result.content, rag.products);
+  // Hydrate citations so callers don't have to round-trip again
+  // to display a pretty name. Look up by id from the RAG snapshot
+  // we already have in memory.
+  const productById = new Map(rag.products.map((p) => [p.id, p]));
+  const citedProducts: CitedProduct[] = citedProductIds
+    .map((id) => productById.get(id))
+    .filter((p): p is RagProductSnippet => Boolean(p))
+    .map((p) => ({ id: p.id, name: p.name, sku: p.sku }));
   // Persist assistant turn — non-fatal if it fails.
   await persistMessage(
     input.conversationId,
@@ -90,6 +111,7 @@ export async function runTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
   return {
     assistant: result.content,
     citedProductIds,
+    citedProducts,
     usage: result.usage,
   };
 }
@@ -233,7 +255,7 @@ function buildSystemPrompt(catalogText: string, productCount: number): string {
 - If asked something outside our catalog, say: "That's outside what I can confirm — our sales team can answer authoritatively. Want me to flag this for them?"
 
 # How to cite products
-When you reference a specific product, cite it by SKU (e.g., "SKU: CF-PO-001") or by its numeric label (e.g., "Product 3"). This lets us link the buyer straight to the product page.
+When you reference a specific product, mention it naturally by its **name** (e.g., "the Navy Herringbone Knit Polo"). Also include its **SKU** in parentheses so we can link the buyer straight to the product page — e.g., "the Navy Herringbone Knit Polo (SKU: CF-PO-001)". The numeric label like "Product 3" is a fallback; prefer the human-readable name.
 
 # Current catalog (${productCount} products)
 ${catalogText || 'CATALOG_UNAVAILABLE — tell the visitor our catalog is temporarily unreachable and offer to escalate to the sales team.'}

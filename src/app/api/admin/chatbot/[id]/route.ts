@@ -38,6 +38,24 @@ export async function GET(
     return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
   }
   const messages = await loadTranscript(conv.id);
+  // Hydrate citations so admins see "Navy Herringbone Knit Polo"
+  // instead of "cf-polo-001". Same one-shot IN-list pattern as the
+  // public rehydrate endpoint.
+  const citedIds = Array.from(
+    new Set(messages.flatMap((m) => m.citedProductIds)),
+  );
+  let productIndex: Record<string, { id: string; name: string; sku: string }> = {};
+  if (citedIds.length > 0) {
+    const { data: products } = await supabase
+      .from('products')
+      .select('id, name, sku')
+      .in('id', citedIds);
+    if (products) {
+      productIndex = Object.fromEntries(
+        products.map((p) => [p.id, { id: p.id, name: p.name, sku: p.sku }]),
+      );
+    }
+  }
   return NextResponse.json(
     {
       conversation: conv,
@@ -46,6 +64,9 @@ export async function GET(
         role: m.role,
         content: m.content,
         cited_product_ids: m.citedProductIds,
+        cited_products: m.citedProductIds
+          .map((id) => productIndex[id])
+          .filter((p): p is { id: string; name: string; sku: string } => Boolean(p)),
         created_at: m.createdAt,
       })),
     },

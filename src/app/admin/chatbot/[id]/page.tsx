@@ -42,6 +42,7 @@ interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   cited_product_ids: string[];
+  cited_products?: Array<{ id: string; name: string; sku: string }>;
   created_at: string;
 }
 
@@ -220,17 +221,26 @@ export default function AdminChatbotDetailPage() {
                   </p>
                   {m.cited_product_ids.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      {m.cited_product_ids.map((id) => (
-                        <Link
-                          key={id}
-                          href={`/products/${id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-sm border border-[#B8956A] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[#B8956A] hover:bg-[#B8956A] hover:text-white"
-                        >
-                          {id} ↗
-                        </Link>
-                      ))}
+                      {m.cited_product_ids.map((id) => {
+                        const hydrated = m.cited_products?.find((p) => p.id === id);
+                        // Show the product name as the link text (with
+                        // SKU as the tooltip). Falls back to the raw
+                        // id if hydration didn't ship.
+                        const label = hydrated?.name ?? id;
+                        const tip = hydrated?.sku ? `SKU: ${hydrated.sku}` : id;
+                        return (
+                          <Link
+                            key={id}
+                            href={`/products/${id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={tip}
+                            className="max-w-[260px] truncate rounded-sm border border-[#B8956A] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[#B8956A] hover:bg-[#B8956A] hover:text-white"
+                          >
+                            {label} ↗
+                          </Link>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
