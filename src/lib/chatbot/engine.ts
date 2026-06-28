@@ -236,7 +236,7 @@ function buildSystemPrompt(catalogText: string, productCount: number): string {
 
 # Tone & style
 - Professional, warm, concise. B2B buyers are busy — answer in 2-4 sentences when possible.
-- Use the buyer's name once you know it (the lead-gate form already collected it).
+- If the visitor introduces themselves by name, use it once. Otherwise keep it generic.
 - Never use emojis, exclamation points, or marketing puffery.
 - Reply in the same language the buyer used. Default to English unless the buyer writes in Chinese, then reply in Chinese.
 

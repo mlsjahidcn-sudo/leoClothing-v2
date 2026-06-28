@@ -3,38 +3,40 @@
 /**
  * Floating chatbot widget — the launcher bubble + panel.
  *
- * Mounts site-wide via (site)/layout.tsx. Three states:
+ * Mounts site-wide via (site)/layout.tsx. Two states:
  *   - closed: just the floating bubble (bottom-right, above the
  *     WhatsApp button on larger screens)
- *   - lead-gate: lead capture form (first-time visitors only)
  *   - open: chat panel
+ *
+ * No lead gate — the visitor starts chatting immediately. We auto-
+ * create an anonymous stub lead (email = visitor_token@anonymous.local)
+ * on first open so the schema's `chatbot_conversations.lead_id NOT NULL`
+ * constraint is satisfied without forcing the visitor to fill anything
+ * in. If they later submit a real inquiry via /inquiry, the admin can
+ * merge the two threads manually.
  *
  * Rehydration: on mount, we read `localStorage` for an existing
  * conversation_id. If found AND the conversation still exists on the
- * server, we skip the lead gate and reopen the chat at the existing
- * transcript. If the server says the conversation is gone (404), we
- * wipe localStorage and show the gate again.
+ * server (status='open'), we reopen the chat at the existing transcript.
+ * Otherwise we generate a fresh visitor_token and lazy-create a new
+ * conversation when the bubble is first clicked.
  *
  * localStorage keys (versioned so we can change shape later):
  *   - cb_v1_visitor_token   — opaque session token
  *   - cb_v1_conversation_id — last conversation UUID
- *   - cb_v1_lead_name       — last contact name (for greeting)
  */
 import { useCallback, useEffect, useState } from 'react';
 import { MessageCircle, X } from 'lucide-react';
-import LeadGateForm, { type LeadGatePayload } from './LeadGateForm';
 import ChatbotPanel from './ChatbotPanel';
 
 const LS_TOKEN = 'cb_v1_visitor_token';
 const LS_CONV = 'cb_v1_conversation_id';
-const LS_NAME = 'cb_v1_lead_name';
 
-type Mode = 'closed' | 'gate' | 'open';
+type Mode = 'closed' | 'opening' | 'open';
 
 interface PersistedSession {
   visitorToken: string;
   conversationId: string | null;
-  contactName: string | null;
 }
 
 /**
@@ -53,10 +55,11 @@ function generateVisitorToken(): string {
 function readSession(): PersistedSession | null {
   if (typeof window === 'undefined') return null;
   const visitorToken = window.localStorage.getItem(LS_TOKEN);
-  const conversationId = window.localStorage.getItem(LS_CONV);
-  const contactName = window.localStorage.getItem(LS_NAME);
   if (!visitorToken) return null;
-  return { visitorToken, conversationId, contactName };
+  return {
+    visitorToken,
+    conversationId: window.localStorage.getItem(LS_CONV),
+  };
 }
 
 function writeSession(session: PersistedSession) {
@@ -67,18 +70,32 @@ function writeSession(session: PersistedSession) {
   } else {
     window.localStorage.removeItem(LS_CONV);
   }
-  if (session.contactName) {
-    window.localStorage.setItem(LS_NAME, session.contactName);
-  } else {
-    window.localStorage.removeItem(LS_NAME);
-  }
 }
 
 function clearSession() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(LS_TOKEN);
   window.localStorage.removeItem(LS_CONV);
-  window.localStorage.removeItem(LS_NAME);
+}
+
+/**
+ * Server creates an anonymous lead + opens a conversation in one call.
+ * Returns the conversation_id; widget persists it for rehydration.
+ */
+async function ensureConversation(visitorToken: string): Promise<string> {
+  const res = await fetch('/api/chatbot/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ visitor_token: visitorToken }),
+  });
+  const body = (await res.json()) as {
+    conversation_id?: string;
+    error?: string;
+  };
+  if (!res.ok || !body.conversation_id) {
+    throw new Error(body.error || `Request failed (${res.status})`);
+  }
+  return body.conversation_id;
 }
 
 export default function ChatbotWidget() {
@@ -106,8 +123,7 @@ export default function ChatbotWidget() {
             const body = (await res.json()) as {
               conversation?: { status?: string };
             };
-            // Skip closed conversations — visitor needs to re-open
-            // with a fresh lead gate so we attribute the new session.
+            // Skip closed conversations — fresh start.
             if (body?.conversation?.status === 'open' && !cancelled) {
               setSession(stored);
               setHydrated(true);
@@ -119,11 +135,11 @@ export default function ChatbotWidget() {
         } catch {
           // Network blip. Keep the stored session; if the visitor
           // tries to send a message and the API returns 404, we'll
-          // re-prompt them then.
+          // re-create then.
         }
       } else {
-        // Have a token but no conversation yet — same browser
-        // returned, gate them again.
+        // Have a token but no conversation yet — keep it for the
+        // upcoming ensureConversation() call.
         setSession(stored);
       }
       if (!cancelled) setHydrated(true);
@@ -133,48 +149,38 @@ export default function ChatbotWidget() {
     };
   }, []);
 
-  const openWidget = useCallback(() => {
+  const openWidget = useCallback(async () => {
     if (!hydrated) return;
+    // Already have a live conversation — just open.
     if (session?.conversationId) {
       setMode('open');
-    } else {
-      setMode('gate');
+      return;
+    }
+    // No conversation yet — create one (anonymous stub lead server-side).
+    setMode('opening');
+    const token = session?.visitorToken ?? generateVisitorToken();
+    try {
+      const conversationId = await ensureConversation(token);
+      const next: PersistedSession = { visitorToken: token, conversationId };
+      writeSession(next);
+      setSession(next);
+      setMode('open');
+    } catch (err) {
+      // Bubble it up to the panel as a fatal error — caller will
+      // close and let the visitor click again.
+      console.error('[chatbot] failed to open conversation:', err);
+      setMode('closed');
     }
   }, [hydrated, session]);
 
   const closeWidget = useCallback(() => setMode('closed'), []);
 
-  const handleLeadSubmit = useCallback(
-    async (payload: LeadGatePayload) => {
-      const res = await fetch('/api/chatbot/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const body = (await res.json()) as {
-        conversation_id?: string;
-        error?: string;
-      };
-      if (!res.ok || !body.conversation_id) {
-        throw new Error(body.error || `Request failed (${res.status})`);
-      }
-      const next: PersistedSession = {
-        visitorToken: payload.visitor_token,
-        conversationId: body.conversation_id,
-        contactName: payload.contact_person,
-      };
-      writeSession(next);
-      setSession(next);
-      setMode('open');
-    },
-    [],
-  );
-
-  // If the server returns 404/410 mid-chat, drop back to gate.
+  // If the server returns 404/410 mid-chat, drop the conversation and
+  // let the next bubble click create a fresh one.
   const handleFatalConversationError = useCallback(() => {
     clearSession();
-    setSession(null);
-    setMode('gate');
+    setSession((s) => (s ? { visitorToken: s.visitorToken, conversationId: null } : s));
+    setMode('closed');
   }, []);
 
   // Don't render the bubble during SSR — would cause hydration
@@ -231,17 +237,15 @@ export default function ChatbotWidget() {
           >
             <X className="h-4 w-4" />
           </button>
-          {mode === 'gate' && (
-            <LeadGateForm
-              visitorToken={session?.visitorToken ?? generateVisitorToken()}
-              onSubmit={handleLeadSubmit}
-            />
+          {mode === 'opening' && (
+            <div className="flex flex-1 items-center justify-center text-sm text-[#7A756E]">
+              Connecting…
+            </div>
           )}
           {mode === 'open' && session?.conversationId && (
             <ChatErrorBoundary onError={handleFatalConversationError}>
               <ChatbotPanel
                 conversationId={session.conversationId}
-                contactName={session.contactName ?? undefined}
                 onClose={closeWidget}
               />
             </ChatErrorBoundary>

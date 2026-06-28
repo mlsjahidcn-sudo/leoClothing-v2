@@ -37,7 +37,6 @@ interface ChatMessage {
 
 interface ChatbotPanelProps {
   conversationId: string;
-  contactName?: string;
   initialMessages?: ChatMessage[];
   onClose: () => void;
 }
@@ -51,7 +50,6 @@ const SUGGESTED_PROMPTS = [
 
 export default function ChatbotPanel({
   conversationId,
-  contactName,
   initialMessages = [],
   onClose,
 }: ChatbotPanelProps) {
@@ -147,7 +145,7 @@ export default function ChatbotPanel({
         <div>
           <p className="font-serif text-base text-[#2C2C2C]">Chat with Cora</p>
           <p className="text-[11px] text-[#7A756E]">
-            {contactName ? `Hi ${contactName} · ` : ''}AI assistant · Chengfeng International
+            AI assistant · Chengfeng International
           </p>
         </div>
         <button

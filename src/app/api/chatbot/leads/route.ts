@@ -1,22 +1,33 @@
 /**
- * POST /api/chatbot/leads — visitor submits the lead-gate form.
+ * POST /api/chatbot/leads — bootstrap an anonymous chatbot session.
  *
- * Creates (or reuses) a `leads` row with `source='chatbot'`, then
- * opens a `chatbot_conversations` row tied to that lead. Returns
+ * Creates a stub `leads` row with `source='chatbot'` and `email` set
+ * to a deterministic `<visitor_token>@anonymous.local` placeholder,
+ * then opens a `chatbot_conversations` row tied to that lead. Returns
  * `{ conversation_id, lead_id }` to the widget, which uses the
  * conversation_id for every subsequent /messages POST.
  *
- * The visitor_token is also returned so the widget can persist it
- * to localStorage and reuse the same transcript across page reloads
- * within the same browser session.
+ * Why an anonymous stub instead of dropping the lead gate:
+ *   - `chatbot_conversations.lead_id` is NOT NULL in the schema.
+ *     Making it nullable would be a destructive migration we don't
+ *     need to ship right now.
+ *   - We still get admin-side attribution: every chatbot thread
+ *     appears under a single "Anonymous Visitor" lead in the leads
+ *     list, with `notes` carrying the visitor_token so admins can
+ *     group related sessions. If the visitor later submits a real
+ *     /inquiry form, those threads can be merged manually.
+ *
+ * Idempotency: the same `visitor_token` always returns the same open
+ * conversation (or creates one). Re-clicking the chat bubble from the
+ * same browser doesn't generate duplicate transcripts.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminSupabase } from '@/lib/supabase/admin';
-import { chatbotLeadGateSchema } from '@/lib/validators';
+import { chatbotStartSchema } from '@/lib/validators';
 import { openConversation } from '@/lib/chatbot/engine';
 
 export const runtime = 'nodejs';
-// Lead-gate is dynamic — never cache.
+// Chat bootstrap is dynamic — never cache.
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
@@ -26,74 +37,81 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
-  const parsed = chatbotLeadGateSchema.safeParse(body);
+  const parsed = chatbotStartSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Invalid lead payload', issues: parsed.error.flatten() },
+      { error: 'Invalid start payload', issues: parsed.error.flatten() },
       { status: 400 },
     );
   }
-  const data = parsed.data;
+  const { visitor_token: visitorToken } = parsed.data;
   const supabase = getAdminSupabase();
 
-  // Create the lead row first. If a lead with the same email already
-  // exists, that's fine — we attach a fresh conversation to the
-  // existing lead rather than rejecting the visitor. Returning buyers
-  // shouldn't have to fill in their company name twice.
-  const { data: lead, error: leadError } = await supabase
-    .from('leads')
-    .insert({
-      company_name: data.company_name,
-      contact_person: data.contact_person,
-      email: data.email,
-      phone: data.phone ?? null,
-      country: data.country ?? null,
-      source: 'chatbot',
-      status: 'new',
-      notes: 'Captured via chatbot lead gate.',
-    })
-    .select('id')
-    .single();
+  // Derive a deterministic anonymous email from the token. The token
+  // is opaque to humans, so the email is too — but it's stable across
+  // re-opens, which lets the leads table dedupe correctly via its
+  // unique email constraint.
+  const anonymousEmail = `${visitorToken}@anonymous.local`;
 
-  if (leadError || !lead) {
-    // 23505 = unique_violation on email. Fall through to look up
-    // the existing lead and continue. Other errors are 500s.
-    if (leadError?.code === '23505') {
-      const { data: existing, error: lookupErr } = await supabase
-        .from('leads')
-        .select('id')
-        .eq('email', data.email)
-        .maybeSingle();
-      if (lookupErr || !existing) {
+  // Find-or-create the stub lead. Anonymous visitors all share the
+  // same email identity per-token, so the second call from the same
+  // browser reuses the existing lead row.
+  let leadId: string;
+  const { data: existingLead } = await supabase
+    .from('leads')
+    .select('id')
+    .eq('email', anonymousEmail)
+    .maybeSingle();
+  if (existingLead) {
+    leadId = existingLead.id;
+  } else {
+    const { data: newLead, error: leadError } = await supabase
+      .from('leads')
+      .insert({
+        company_name: 'Anonymous Visitor',
+        contact_person: 'Anonymous Visitor',
+        email: anonymousEmail,
+        source: 'chatbot',
+        status: 'new',
+        notes: `Anonymous chatbot session. visitor_token=${visitorToken}`,
+      })
+      .select('id')
+      .single();
+    if (leadError || !newLead) {
+      // If two widgets race to create the same stub lead, the unique
+      // email constraint fires (23505). Re-fetch and continue.
+      if (leadError?.code === '23505') {
+        const { data: retry, error: lookupErr } = await supabase
+          .from('leads')
+          .select('id')
+          .eq('email', anonymousEmail)
+          .maybeSingle();
+        if (retry) {
+          leadId = retry.id;
+        } else {
+          return NextResponse.json(
+            { error: lookupErr?.message ?? 'Failed to resolve lead after conflict' },
+            { status: 500 },
+          );
+        }
+      } else {
         return NextResponse.json(
-          { error: lookupErr?.message ?? 'Failed to resolve existing lead' },
+          { error: leadError?.message ?? 'Failed to create lead' },
           { status: 500 },
         );
       }
-      // Use the existing lead id.
-      const { conversationId, created } = await openConversation({
-        leadId: existing.id,
-        visitorToken: data.visitor_token,
-        metadata: { source: 'chatbot', returning_visitor: true },
-      });
-      return NextResponse.json(
-        { conversation_id: conversationId, lead_id: existing.id, created },
-        { status: 200 },
-      );
+    } else {
+      leadId = newLead.id;
     }
-    return NextResponse.json(
-      { error: leadError?.message ?? 'Failed to create lead' },
-      { status: 500 },
-    );
   }
 
   const { conversationId, created } = await openConversation({
-    leadId: lead.id,
-    visitorToken: data.visitor_token,
-    metadata: { source: 'chatbot', returning_visitor: false },
+    leadId,
+    visitorToken,
+    metadata: { source: 'chatbot', anonymous: true },
   });
   return NextResponse.json(
-    { conversation_id: conversationId, lead_id: lead.id, created },
-    { status: 201 },
+    { conversation_id: conversationId, lead_id: leadId, created },
+    { status: 200 },
   );
 }
