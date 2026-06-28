@@ -106,6 +106,54 @@
 - `pnpm build` — 构建生产版本
 - `npx tsx src/storage/database/seed.ts` — 重新种子数据库
 
+## Chatbot (Cora)
+
+Floating B2B sales assistant on every public page. Lead-gates the visitor (name + email + company) before the chat opens, then answers product/catalog questions grounded in the live Supabase catalog.
+
+### Stack
+- **LLM**: DeepSeek Chat Completions (`deepseek-chat`) — OpenAI-compatible API.
+- **RAG**: Live Supabase catalog fetch on every turn (`src/lib/chatbot/rag.ts`). No embeddings; the catalog fits comfortably in context. Switch to embedding search once the catalog exceeds ~100 products.
+- **Persistence**: `chatbot_conversations` (one per visitor session, FK to `leads`) + `chatbot_messages` (rolling transcript). Migration `0007_chatbot.sql`.
+
+### Files
+- `src/lib/chatbot/deepseek.ts` — DeepSeek HTTP client (server-only, aborts after 25s).
+- `src/lib/chatbot/rag.ts` — Builds the live catalog context block + extracts cited product IDs from the assistant reply.
+- `src/lib/chatbot/engine.ts` — Orchestrator: system prompt + history + RAG + DeepSeek + persistence.
+- `src/components/chatbot/ChatbotWidget.tsx` — Floating bubble + state machine (closed → gate → open).
+- `src/components/chatbot/LeadGateForm.tsx` — Lead-capture form.
+- `src/components/chatbot/ChatbotPanel.tsx` — Chat surface (messages, composer, suggested prompts).
+- `src/app/api/chatbot/{leads,messages,conversations/[id]}/route.ts` — Public endpoints (service-role).
+- `src/app/api/admin/chatbot/{route,[id]/route}.ts` — Admin endpoints (gated by `requireAdmin`).
+- `src/app/admin/chatbot/{page,[id]/page}.tsx` — Admin list + transcript detail.
+- `src/lib/validators.ts` — `chatbotLeadGateSchema`, `chatbotMessageSchema`.
+- `supabase/migrations/0007_chatbot.sql` — Tables + RLS policies.
+
+### Environment variables
+
+| 变量 | 用途 | 是否公开 |
+|------|------|---------|
+| `DEEPSEEK_API_KEY` | DeepSeek API key (server-only) | ❌ 必须服务端 |
+| `DEEPSEEK_MODEL` | 默认 `deepseek-chat`，可改 `deepseek-reasoner` | ❌ 服务端 |
+| `DEEPSEEK_BASE_URL` | 默认 `https://api.deepseek.com` | ❌ 服务端 |
+
+### Lead capture flow
+1. Visitor clicks the floating bubble → `LeadGateForm` opens.
+2. Form submits to `POST /api/chatbot/leads` → creates/upserts a `leads` row with `source='chatbot'` and opens a `chatbot_conversations` row.
+3. Widget persists `conversation_id` + `visitor_token` to `localStorage` so returning visitors rejoin the same transcript.
+4. Each turn: `POST /api/chatbot/messages` → engine rebuilds RAG context, calls DeepSeek, persists both turns, returns assistant reply.
+5. Admin reads transcripts at `/admin/chatbot` (list) and `/admin/chatbot/[id]` (detail). Leads list flags chatbot leads with an `AI` badge.
+
+### Refusal / guardrail rules baked into the system prompt
+- Never invent product specs, prices, MOQs, or SKUs.
+- Never quote a specific delivery date.
+- Never request payment or passwords.
+- Out-of-scope questions → escalate to the sales team.
+- Always cite products by SKU (`CF-PO-001`) or numeric label (`Product 3`) so the citation validator can store real product IDs.
+
+### Admin operations
+- **Close / reopen** a conversation: `PATCH /api/admin/chatbot/[id]` with `{ status: 'open' | 'closed' }`.
+- Transcripts are **append-only**. To redact something, edit the lead's `notes` field.
+
 ## API 接口
 
 ### 公开接口
@@ -116,6 +164,9 @@
 | GET | /api/products?category=&search=&featured= | 产品列表 (支持筛选) |
 | GET | /api/products/[id] | 产品详情 (含关联数据) |
 | POST | /api/rfqs | 提交询价单 |
+| POST | /api/chatbot/leads | Chatbot 潜客门 (lead gate) |
+| POST | /api/chatbot/messages | Chatbot 发送一条消息 |
+| GET | /api/chatbot/conversations/[id] | Chatbot 加载会话历史 |
 
 ### 管理接口
 
@@ -131,3 +182,6 @@
 | GET | /api/admin/rfqs | 询价单列表 |
 | GET | /api/admin/rfqs/[id] | 询价单详情 |
 | PATCH | /api/admin/rfqs/[id] | 更新询价状态/备注 |
+| GET | /api/admin/chatbot | Chatbot 会话列表 |
+| GET | /api/admin/chatbot/[id] | Chatbot 会话详情 + 完整 transcript |
+| PATCH | /api/admin/chatbot/[id] | 关闭/重开 Chatbot 会话 |

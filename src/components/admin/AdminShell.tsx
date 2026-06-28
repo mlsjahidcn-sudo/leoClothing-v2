@@ -13,12 +13,14 @@ import {
   Menu,
   Users,
   Settings as SettingsIcon,
+  Bot,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/admin/products', label: 'Products', icon: Package, exact: false },
   { href: '/admin/leads', label: 'Leads', icon: Users, exact: false },
+  { href: '/admin/chatbot', label: 'Chatbot', icon: Bot, exact: false },
   { href: '/admin/rfqs', label: 'RFQs', icon: FileText, exact: false },
   { href: '/admin/settings', label: 'Settings', icon: SettingsIcon, exact: false },
 ];

@@ -344,6 +344,80 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['admin_profiles']['Insert']>;
         Relationships: [];
       };
+      // Added in migration 0007_chatbot.sql. One row per visitor chat
+      // session; FK to leads (cascade-delete) so removing a lead also
+      // drops its transcript. Public writes are service-role only;
+      // admin SELECT is gated by RLS policy `chatbot_conversations_admin_read`.
+      chatbot_conversations: {
+        Row: {
+          id: string;
+          lead_id: string;
+          visitor_token: string;
+          status: string;
+          message_count: number;
+          last_message_at: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          lead_id: string;
+          visitor_token: string;
+          status?: string;
+          message_count?: number;
+          last_message_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string | null;
+        };
+        Update: Partial<
+          Database['public']['Tables']['chatbot_conversations']['Insert']
+        >;
+        Relationships: [
+          {
+            foreignKeyName: 'chatbot_conversations_lead_id_fkey';
+            columns: ['lead_id'];
+            referencedRelation: 'leads';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      // Added in migration 0007_chatbot.sql. Rolling transcript.
+      // `cited_product_ids` lets the admin see "which products the bot
+      // talked about" without scraping assistant text. Admin SELECT
+      // gated by RLS policy `chatbot_messages_admin_read`.
+      chatbot_messages: {
+        Row: {
+          id: number;
+          conversation_id: string;
+          role: 'user' | 'assistant' | 'system';
+          content: string;
+          cited_product_ids: string[];
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          conversation_id: string;
+          role: 'user' | 'assistant' | 'system';
+          content: string;
+          cited_product_ids?: string[];
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database['public']['Tables']['chatbot_messages']['Insert']
+        >;
+        Relationships: [
+          {
+            foreignKeyName: 'chatbot_messages_conversation_id_fkey';
+            columns: ['conversation_id'];
+            referencedRelation: 'chatbot_conversations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     // See supabase/migrations/0002_admin_whatsapp.sql.
     // The `public_admin_whatsapp` view returns at most one non-empty

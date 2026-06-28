@@ -247,7 +247,14 @@ export default function AdminLeadsPage() {
                     <div className="text-sm text-gray-900">{lead.contact_person}</div>
                     <div className="text-xs text-gray-500">{lead.email}</div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 capitalize">{lead.source.replace('_', ' ')}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    <span className="capitalize">{lead.source.replace('_', ' ')}</span>
+                    {lead.source === 'chatbot' && (
+                      <span className="ml-1.5 inline-block rounded-sm bg-[#B8956A]/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#96754E]">
+                        AI
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(lead.status)}`}>
                       {getStatusLabel(lead.status)}

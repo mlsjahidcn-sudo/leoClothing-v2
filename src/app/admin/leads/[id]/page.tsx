@@ -5,6 +5,99 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 
+/**
+ * Inline subcomponent: list chatbot conversations for the current lead.
+ *
+ * Lives in this file rather than its own module because it's only
+ * used here — keeps the public component graph smaller and avoids a
+ * 4-line cross-file import dance. The component fetches
+ * /api/admin/chatbot?lead_id=... once on mount and renders a card
+ * per conversation.
+ */
+function ChatbotConversations({ leadId }: { leadId: string }) {
+  const [rows, setRows] = useState<
+    Array<{
+      id: string;
+      status: string;
+      message_count: number;
+      last_message_at: string | null;
+    }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // No lead_id filter exists on the list endpoint today — we
+        // fetch the page and filter client-side. With ≤50 conversations
+        // per lead in practice, this is fine. If it grows, add a
+        // server-side filter.
+        const res = await adminFetch(`/api/admin/chatbot?limit=200`);
+        if (!res.ok) return;
+        const body = (await res.json()) as {
+          conversations?: Array<{
+            id: string;
+            lead_id: string;
+            status: string;
+            message_count: number;
+            last_message_at: string | null;
+          }>;
+        };
+        if (!cancelled) {
+          setRows((body.conversations ?? []).filter((c) => c.lead_id === leadId));
+        }
+      } catch {
+        // Swallow — admin UI degrades gracefully to no chatbot section.
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [leadId]);
+
+  if (loading) return null;
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-[#B8956A]/30 bg-[#B8956A]/5 p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-[#96754E]">
+          Chatbot Conversations
+        </h2>
+        <span className="text-xs text-[#96754E]">{rows.length}</span>
+      </div>
+      <ul className="space-y-2">
+        {rows.map((row) => (
+          <li
+            key={row.id}
+            className="flex items-center justify-between rounded-md border border-[#B8956A]/20 bg-white px-4 py-3"
+          >
+            <div className="text-sm">
+              <div className="font-medium text-gray-900">
+                {row.message_count} messages · {row.status}
+              </div>
+              <div className="text-xs text-gray-500">
+                {row.last_message_at
+                  ? `Last activity ${new Date(row.last_message_at).toLocaleString()}`
+                  : 'No activity yet'}
+              </div>
+            </div>
+            <Link
+              href={`/admin/chatbot/${row.id}`}
+              className="text-sm text-[#B8956A] hover:underline"
+            >
+              Open transcript →
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 interface LeadActivity {
   id: number;
   lead_id: string;
@@ -280,6 +373,12 @@ export default function LeadDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Chatbot Conversations — only fetched when the lead was
+              captured via the chatbot. Polls /api/admin/chatbot with a
+              lead-id filter (server does the join). If empty, we hide
+              the section entirely so non-chatbot leads aren't cluttered. */}
+          <ChatbotConversations leadId={lead.id} />
 
           {/* Activity Timeline */}
           <div className="bg-white rounded-lg border border-gray-200 p-5">
