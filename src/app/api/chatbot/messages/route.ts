@@ -22,68 +22,81 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
-  const parsed = chatbotMessageSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid message payload', issues: parsed.error.flatten() },
-      { status: 400 },
-    );
-  }
-  const { conversation_id, message } = parsed.data;
-  const supabase = getAdminSupabase();
-
-  // Confirm the conversation exists and is open before we burn an
-  // LLM call on it. A 404 here is a likely sign of a stale widget
-  // (visitor cleared localStorage, then re-opened the panel).
-  const { data: conv, error: convError } = await supabase
-    .from('chatbot_conversations')
-    .select('id, status, lead_id')
-    .eq('id', conversation_id)
-    .maybeSingle();
-
-  if (convError) {
-    return NextResponse.json({ error: convError.message }, { status: 500 });
-  }
-  if (!conv) {
-    return NextResponse.json(
-      { error: 'Conversation not found. Please refresh and try again.' },
-      { status: 404 },
-    );
-  }
-  if (conv.status !== 'open') {
-    return NextResponse.json(
-      { error: 'This conversation has been closed.' },
-      { status: 410 },
-    );
-  }
-
-  try {
-    const result = await runTurn({
-      conversationId: conv.id,
-      userMessage: message,
-    });
-    return NextResponse.json(
-      {
-        assistant: result.assistant,
-        cited_product_ids: result.citedProductIds,
-        cited_products: result.citedProducts,
-        usage: result.usage ?? null,
-      },
-      { status: 200 },
-    );
-  } catch (err) {
-    if (err instanceof ChatbotEngineError) {
-      return NextResponse.json({ error: err.message }, { status: err.status });
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
-    console.error('[api/chatbot/messages] unexpected error:', err);
+    const parsed = chatbotMessageSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid message payload', issues: parsed.error.flatten() },
+        { status: 400 },
+      );
+    }
+    const { conversation_id, message } = parsed.data;
+    const supabase = getAdminSupabase();
+
+    // Confirm the conversation exists and is open before we burn an
+    // LLM call on it. A 404 here is a likely sign of a stale widget
+    // (visitor cleared localStorage, then re-opened the panel).
+    const { data: conv, error: convError } = await supabase
+      .from('chatbot_conversations')
+      .select('id, status, lead_id')
+      .eq('id', conversation_id)
+      .maybeSingle();
+
+    if (convError) {
+      return NextResponse.json({ error: convError.message }, { status: 500 });
+    }
+    if (!conv) {
+      return NextResponse.json(
+        { error: 'Conversation not found. Please refresh and try again.' },
+        { status: 404 },
+      );
+    }
+    if (conv.status !== 'open') {
+      return NextResponse.json(
+        { error: 'This conversation has been closed.' },
+        { status: 410 },
+      );
+    }
+
+    try {
+      const result = await runTurn({
+        conversationId: conv.id,
+        userMessage: message,
+      });
+      return NextResponse.json(
+        {
+          assistant: result.assistant,
+          cited_product_ids: result.citedProductIds,
+          cited_products: result.citedProducts,
+          usage: result.usage ?? null,
+        },
+        { status: 200 },
+      );
+    } catch (err) {
+      if (err instanceof ChatbotEngineError) {
+        return NextResponse.json({ error: err.message }, { status: err.status });
+      }
+      console.error('[api/chatbot/messages] runTurn unexpected error:', err);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      return NextResponse.json(
+        { error: `Chat engine error: ${msg}` },
+        { status: 500 },
+      );
+    }
+  } catch (err) {
+    // Top-level safety net for supabase admin init failures (e.g.
+    // missing SUPABASE_SERVICE_ROLE_KEY) so the visitor sees a useful
+    // message instead of an opaque 500.
+    console.error('[api/chatbot/messages] top-level unexpected error:', err);
+    const message = err instanceof Error ? err.message : 'Unknown server error';
     return NextResponse.json(
-      { error: 'Unexpected server error. Please try again.' },
+      { error: `Chat messages failed: ${message}` },
       { status: 500 },
     );
   }

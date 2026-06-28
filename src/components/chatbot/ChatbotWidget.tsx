@@ -88,12 +88,22 @@ async function ensureConversation(visitorToken: string): Promise<string> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ visitor_token: visitorToken }),
   });
-  const body = (await res.json()) as {
-    conversation_id?: string;
-    error?: string;
-  };
+  // Defensive: some failure modes (e.g. an upstream proxy returning
+  // an empty 500) make `res.json()` throw on an empty body. Read as
+  // text first, then try JSON.parse, so we always get a usable
+  // error message in the catch.
+  const raw = await res.text();
+  let body: { conversation_id?: string; error?: string } = {};
+  try {
+    body = raw ? (JSON.parse(raw) as typeof body) : {};
+  } catch {
+    body = {};
+  }
   if (!res.ok || !body.conversation_id) {
-    throw new Error(body.error || `Request failed (${res.status})`);
+    throw new Error(
+      body.error ||
+        `Chat bootstrap failed (${res.status})${raw ? `: ${raw.slice(0, 200)}` : ''}`,
+    );
   }
   return body.conversation_id;
 }

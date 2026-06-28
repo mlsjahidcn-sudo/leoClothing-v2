@@ -94,14 +94,25 @@ export default function ChatbotPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversation_id: conversationId, message: trimmed }),
       });
-      const body = (await res.json()) as {
+      // Defensive text+JSON read so an empty 500 doesn't blow up
+      // res.json() before we can show the user the real error.
+      const raw = await res.text();
+      let body: {
         assistant?: string;
         cited_product_ids?: string[];
         cited_products?: Array<{ id: string; name: string; sku: string }>;
         error?: string;
-      };
+      } = {};
+      try {
+        body = raw ? JSON.parse(raw) : {};
+      } catch {
+        body = {};
+      }
       if (!res.ok) {
-        throw new Error(body.error || `Request failed (${res.status})`);
+        throw new Error(
+          body.error ||
+            `Request failed (${res.status})${raw ? `: ${raw.slice(0, 200)}` : ''}`,
+        );
       }
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
